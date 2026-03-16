@@ -12,7 +12,7 @@ test('identity() returns IdentityClaims when identity_claims attribute is set on
 });
 
 test('identity() throws RuntimeException when no claims in request attributes', function () {
-    expect(fn () => identity())->toThrow(\RuntimeException::class);
+    expect(fn () => identity())->toThrow(RuntimeException::class);
 });
 
 test('identity() returns the exact IdentityClaims instance stored in request', function () {

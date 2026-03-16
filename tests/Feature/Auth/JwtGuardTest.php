@@ -1,19 +1,17 @@
 <?php
 
-use IgniteLabs\IdentityBridge\Auth\JwksProvider;
 use IgniteLabs\IdentityBridge\Auth\JwtGuard;
 use IgniteLabs\IdentityBridge\Auth\JwtValidator;
 use IgniteLabs\IdentityBridge\Identity\IdentityClaims;
 use IgniteLabs\IdentityBridge\Tests\Fixtures\KeyFixture;
 use Illuminate\Auth\GenericUser;
-use Illuminate\Auth\RequestGuard;
 use Illuminate\Contracts\Auth\UserProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
-    $this->key  = KeyFixture::generate('test-key-1');
+    $this->key = KeyFixture::generate('test-key-1');
     $this->jwks = KeyFixture::makeJwks($this->key['public'], $this->key['kid']);
     Http::fake(['*' => Http::response($this->jwks, 200)]);
     Cache::flush();
@@ -23,8 +21,9 @@ function makeRequest(?string $token = null): Request
 {
     $request = Request::create('/test', 'GET');
     if ($token) {
-        $request->headers->set('Authorization', 'Bearer ' . $token);
+        $request->headers->set('Authorization', 'Bearer '.$token);
     }
+
     return $request;
 }
 
@@ -34,16 +33,17 @@ function makeUserProvider(mixed $user = null): UserProvider
     $provider->shouldReceive('retrieveByCredentials')->andReturn($user);
     $provider->shouldReceive('validateCredentials')->andReturn(true);
     $provider->shouldReceive('rehashPasswordIfRequired')->andReturn(null)->byDefault();
+
     return $provider;
 }
 
 it('returns user for valid bearer token when shadow user exists', function () {
     $claims = KeyFixture::makeClaims();
-    $token  = KeyFixture::makeJwt($claims, $this->key['private'], $this->key['kid']);
+    $token = KeyFixture::makeJwt($claims, $this->key['private'], $this->key['kid']);
 
-    $user     = new GenericUser(['id' => 1, 'identity_id' => $claims['sub']]);
+    $user = new GenericUser(['id' => 1, 'identity_id' => $claims['sub']]);
     $provider = makeUserProvider($user);
-    $request  = makeRequest($token);
+    $request = makeRequest($token);
 
     $guard = new JwtGuard(app(JwtValidator::class), $provider, $request);
 
@@ -52,10 +52,10 @@ it('returns user for valid bearer token when shadow user exists', function () {
 
 it('returns null when token valid but no matching local user', function () {
     $claims = KeyFixture::makeClaims();
-    $token  = KeyFixture::makeJwt($claims, $this->key['private'], $this->key['kid']);
+    $token = KeyFixture::makeJwt($claims, $this->key['private'], $this->key['kid']);
 
     $provider = makeUserProvider(null);
-    $request  = makeRequest($token);
+    $request = makeRequest($token);
 
     $guard = new JwtGuard(app(JwtValidator::class), $provider, $request);
 
@@ -64,7 +64,7 @@ it('returns null when token valid but no matching local user', function () {
 
 it('returns null for invalid token', function () {
     $provider = makeUserProvider(null);
-    $request  = makeRequest('invalid.token.here');
+    $request = makeRequest('invalid.token.here');
 
     $guard = new JwtGuard(app(JwtValidator::class), $provider, $request);
 
@@ -73,7 +73,7 @@ it('returns null for invalid token', function () {
 
 it('returns null when no Authorization header', function () {
     $provider = makeUserProvider(null);
-    $request  = makeRequest(); // no token
+    $request = makeRequest(); // no token
 
     $guard = new JwtGuard(app(JwtValidator::class), $provider, $request);
 
@@ -82,29 +82,29 @@ it('returns null when no Authorization header', function () {
 
 it('check() returns true when user resolved', function () {
     $claims = KeyFixture::makeClaims();
-    $token  = KeyFixture::makeJwt($claims, $this->key['private'], $this->key['kid']);
+    $token = KeyFixture::makeJwt($claims, $this->key['private'], $this->key['kid']);
 
-    $user     = new GenericUser(['id' => 1, 'identity_id' => $claims['sub']]);
+    $user = new GenericUser(['id' => 1, 'identity_id' => $claims['sub']]);
     $provider = makeUserProvider($user);
-    $guard    = new JwtGuard(app(JwtValidator::class), $provider, makeRequest($token));
+    $guard = new JwtGuard(app(JwtValidator::class), $provider, makeRequest($token));
 
     expect($guard->check())->toBeTrue();
 });
 
 it('guest() returns true when no valid token', function () {
     $provider = makeUserProvider(null);
-    $guard    = new JwtGuard(app(JwtValidator::class), $provider, makeRequest());
+    $guard = new JwtGuard(app(JwtValidator::class), $provider, makeRequest());
 
     expect($guard->guest())->toBeTrue();
 });
 
 it('attaches IdentityClaims to request attributes after valid auth', function () {
     $claims = KeyFixture::makeClaims();
-    $token  = KeyFixture::makeJwt($claims, $this->key['private'], $this->key['kid']);
+    $token = KeyFixture::makeJwt($claims, $this->key['private'], $this->key['kid']);
 
-    $user     = new GenericUser(['id' => 1, 'identity_id' => $claims['sub']]);
+    $user = new GenericUser(['id' => 1, 'identity_id' => $claims['sub']]);
     $provider = makeUserProvider($user);
-    $request  = makeRequest($token);
+    $request = makeRequest($token);
 
     $guard = new JwtGuard(app(JwtValidator::class), $provider, $request);
     $guard->user();
@@ -114,9 +114,9 @@ it('attaches IdentityClaims to request attributes after valid auth', function ()
 
 it('calling user() twice returns cached user without double-validate', function () {
     $claims = KeyFixture::makeClaims();
-    $token  = KeyFixture::makeJwt($claims, $this->key['private'], $this->key['kid']);
+    $token = KeyFixture::makeJwt($claims, $this->key['private'], $this->key['kid']);
 
-    $user     = new GenericUser(['id' => 1, 'identity_id' => $claims['sub']]);
+    $user = new GenericUser(['id' => 1, 'identity_id' => $claims['sub']]);
     $provider = Mockery::mock(UserProvider::class);
     $provider->shouldReceive('retrieveByCredentials')->once()->andReturn($user);
     $request = makeRequest($token);

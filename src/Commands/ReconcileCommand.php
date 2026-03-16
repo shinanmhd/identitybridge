@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace IgniteLabs\IdentityBridge\Commands;
 
-use Illuminate\Console\Command;
-use Illuminate\Database\Eloquent\Model;
 use IgniteLabs\IdentityBridge\Client\IdentityBridgeClient;
 use IgniteLabs\IdentityBridge\Exceptions\IdentityBridgeException;
+use Illuminate\Console\Command;
 
 class ReconcileCommand extends Command
 {
@@ -25,14 +24,15 @@ class ReconcileCommand extends Command
 
     public function handle(): int
     {
-        $since   = $this->option('since') ?: null;
-        $dryRun  = (bool) $this->option('dry-run');
+        $since = $this->option('since') ?: null;
+        $dryRun = (bool) $this->option('dry-run');
         $perPage = (int) $this->option('per-page');
 
         $userModel = $this->resolveUserModel();
 
         if ($userModel === null) {
             $this->error('Could not resolve user model. Check identity-bridge.user_model config.');
+
             return Command::FAILURE;
         }
 
@@ -73,7 +73,8 @@ class ReconcileCommand extends Command
                 ));
             }
         } catch (IdentityBridgeException $e) {
-            $this->error('Failed to fetch users from Identity Bridge: ' . $e->getMessage());
+            $this->error('Failed to fetch users from Identity Bridge: '.$e->getMessage());
+
             return Command::FAILURE;
         }
 

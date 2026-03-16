@@ -12,8 +12,8 @@ class JwksProvider
 {
     public function getKeySet(): array
     {
-        $cacheKey = config('identity-bridge.cache_prefix', 'ib_sdk_') . 'jwks';
-        $ttl      = (int) config('identity-bridge.jwks_ttl', 3600);
+        $cacheKey = config('identity-bridge.cache_prefix', 'ib_sdk_').'jwks';
+        $ttl = (int) config('identity-bridge.jwks_ttl', 3600);
 
         // Cache the raw JWKS array, not parsed keys — OpenSSLAsymmetricKey
         // objects cannot be serialized by PHP's cache drivers.
@@ -28,7 +28,7 @@ class JwksProvider
 
     public function rotateCache(): void
     {
-        $cacheKey = config('identity-bridge.cache_prefix', 'ib_sdk_') . 'jwks';
+        $cacheKey = config('identity-bridge.cache_prefix', 'ib_sdk_').'jwks';
         Cache::forget($cacheKey);
     }
 }

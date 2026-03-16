@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace IgniteLabs\IdentityBridge\Commands;
 
+use IgniteLabs\IdentityBridge\Client\IdentityBridgeClient;
+use IgniteLabs\IdentityBridge\Exceptions\IdentityBridgeException;
 use Illuminate\Console\Command;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
-use IgniteLabs\IdentityBridge\Client\IdentityBridgeClient;
-use IgniteLabs\IdentityBridge\Exceptions\IdentityBridgeException;
 
 class CheckConnectionCommand extends Command
 {
@@ -23,11 +23,11 @@ class CheckConnectionCommand extends Command
 
     public function handle(): int
     {
-        $url     = config('identity-bridge.url');
+        $url = config('identity-bridge.url');
         $success = true;
 
         try {
-            $response = Http::get($url . '/health');
+            $response = Http::get($url.'/health');
 
             if ($response->successful()) {
                 $this->info("✓ Identity Bridge is reachable at {$url}");

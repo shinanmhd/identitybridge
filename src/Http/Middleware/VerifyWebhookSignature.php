@@ -13,15 +13,15 @@ class VerifyWebhookSignature
     public function handle(Request $request, Closure $next): Response
     {
         $rawBody = $request->getContent();
-        $header  = $request->header('X-Identity-Signature');
+        $header = $request->header('X-Identity-Signature');
 
         if (! $header) {
             return response()->json(['error' => 'Invalid signature'], 401);
         }
 
-        $rawSecret    = config('identity-bridge.webhook_secret');
+        $rawSecret = config('identity-bridge.webhook_secret');
         $hashedSecret = hash('sha256', $rawSecret);
-        $expected     = hash_hmac('sha256', $rawBody, $hashedSecret);
+        $expected = hash_hmac('sha256', $rawBody, $hashedSecret);
 
         $provided = str_starts_with($header, 'sha256=')
             ? substr($header, 7)

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace IgniteLabs\IdentityBridge\Client;
 
+use IgniteLabs\IdentityBridge\Exceptions\IdentityBridgeException;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Cache;
-use IgniteLabs\IdentityBridge\Exceptions\IdentityBridgeException;
 
 class IdentityBridgeClient
 {
@@ -16,17 +16,17 @@ class IdentityBridgeClient
 
     public function getServiceToken(): string
     {
-        $key = config('identity-bridge.cache_prefix', 'ib_sdk_') . 'service_token';
+        $key = config('identity-bridge.cache_prefix', 'ib_sdk_').'service_token';
 
         if ($token = Cache::get($key)) {
             return $token;
         }
 
         $response = $this->http->post(
-            config('identity-bridge.url') . '/oauth/token',
+            config('identity-bridge.url').'/oauth/token',
             [
-                'grant_type'    => 'client_credentials',
-                'client_id'     => config('identity-bridge.client_id'),
+                'grant_type' => 'client_credentials',
+                'client_id' => config('identity-bridge.client_id'),
                 'client_secret' => config('identity-bridge.client_secret'),
             ]
         );
@@ -40,7 +40,7 @@ class IdentityBridgeClient
         }
 
         $token = $response->json('access_token');
-        $ttl   = config('identity-bridge.service_token_ttl', 3500);
+        $ttl = config('identity-bridge.service_token_ttl', 3500);
 
         Cache::put($key, $token, $ttl);
 
@@ -49,10 +49,10 @@ class IdentityBridgeClient
 
     public function getIdentity(string $identityId): array
     {
-        $token    = $this->getServiceToken();
+        $token = $this->getServiceToken();
         $response = $this->http
             ->withToken($token)
-            ->get(config('identity-bridge.url') . "/api/identities/{$identityId}");
+            ->get(config('identity-bridge.url')."/api/identities/{$identityId}");
 
         if ($response->status() === 404) {
             throw new IdentityBridgeException('Identity not found');
@@ -71,10 +71,10 @@ class IdentityBridgeClient
 
     public function revokeToken(string $jti): bool
     {
-        $token    = $this->getServiceToken();
+        $token = $this->getServiceToken();
         $response = $this->http
             ->withToken($token)
-            ->post(config('identity-bridge.url') . "/api/tokens/{$jti}/revoke");
+            ->post(config('identity-bridge.url')."/api/tokens/{$jti}/revoke");
 
         if ($response->failed()) {
             $message = $response->json('message')
@@ -89,7 +89,7 @@ class IdentityBridgeClient
 
     public function refreshServiceToken(): string
     {
-        $key = config('identity-bridge.cache_prefix', 'ib_sdk_') . 'service_token';
+        $key = config('identity-bridge.cache_prefix', 'ib_sdk_').'service_token';
         Cache::forget($key);
 
         return $this->getServiceToken();
@@ -108,14 +108,14 @@ class IdentityBridgeClient
         do {
             $query = array_filter([
                 'per_page' => $perPage,
-                'page'     => $page,
-                'since'    => $since,
+                'page' => $page,
+                'since' => $since,
             ]);
 
-            $token    = $this->getServiceToken();
+            $token = $this->getServiceToken();
             $response = $this->http
                 ->withToken($token)
-                ->get(config('identity-bridge.url') . '/api/service/users', $query);
+                ->get(config('identity-bridge.url').'/api/service/users', $query);
 
             if ($response->failed()) {
                 $message = $response->json('message')

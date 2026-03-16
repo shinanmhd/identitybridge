@@ -16,11 +16,11 @@ final class StaffClaims
         public readonly string $identityId,
         public readonly string $name,
         public readonly string $email,
-        public readonly bool   $isStaff,
+        public readonly bool $isStaff,
         public readonly string $audience,
         public readonly string $issuer,
-        public readonly int    $issuedAt,
-        public readonly int    $expiresAt,
+        public readonly int $issuedAt,
+        public readonly int $expiresAt,
         public readonly string $jti,
     ) {}
 
@@ -31,16 +31,16 @@ final class StaffClaims
         }
 
         return new self(
-            sub:        $payload->sub,
+            sub: $payload->sub,
             identityId: $payload->identity_id,
-            name:       $payload->name,
-            email:      $payload->email,
-            isStaff:    (bool) $payload->is_staff,
-            audience:   is_array($payload->aud) ? $payload->aud[0] : $payload->aud,
-            issuer:     $payload->iss,
-            issuedAt:   (int) $payload->iat,
-            expiresAt:  (int) $payload->exp,
-            jti:        $payload->jti,
+            name: $payload->name,
+            email: $payload->email,
+            isStaff: (bool) $payload->is_staff,
+            audience: is_array($payload->aud) ? $payload->aud[0] : $payload->aud,
+            issuer: $payload->iss,
+            issuedAt: (int) $payload->iat,
+            expiresAt: (int) $payload->exp,
+            jti: $payload->jti,
         );
     }
 

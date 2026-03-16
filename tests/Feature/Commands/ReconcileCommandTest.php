@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use IgniteLabs\IdentityBridge\Client\IdentityBridgeClient;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
@@ -38,7 +39,7 @@ it('reports no orphans when all identities have shadow users', function () {
 });
 
 it('reports orphans when identity has no shadow user', function () {
-    $mockClient = Mockery::mock(\IgniteLabs\IdentityBridge\Client\IdentityBridgeClient::class);
+    $mockClient = Mockery::mock(IdentityBridgeClient::class);
     $mockClient->shouldReceive('listUsers')
         ->once()
         ->andReturn((function () {
@@ -48,11 +49,11 @@ it('reports orphans when identity has no shadow user', function () {
             ];
         })());
 
-    $this->app->instance(\IgniteLabs\IdentityBridge\Client\IdentityBridgeClient::class, $mockClient);
+    $this->app->instance(IdentityBridgeClient::class, $mockClient);
     config(['identity-bridge.user_model' => ReconcileTestUserNeverExists::class]);
 
-    $exitCode = \Illuminate\Support\Facades\Artisan::call('identity-bridge:reconcile');
-    $output   = \Illuminate\Support\Facades\Artisan::output();
+    $exitCode = Artisan::call('identity-bridge:reconcile');
+    $output = Artisan::output();
 
     expect($output)->toContain('[orphan]')
         ->and($output)->toContain('uuid-orphan')
@@ -126,7 +127,7 @@ class ReconcileTestUserAlwaysExists
 {
     public static function where(string $col, mixed $val): static
     {
-        return new static();
+        return new static;
     }
 
     public function exists(): bool
@@ -139,7 +140,7 @@ class ReconcileTestUserNeverExists
 {
     public static function where(string $col, mixed $val): static
     {
-        return new static();
+        return new static;
     }
 
     public function exists(): bool

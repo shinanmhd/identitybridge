@@ -4,6 +4,9 @@ use IgniteLabs\IdentityBridge\Auth\JwksProvider;
 use IgniteLabs\IdentityBridge\Auth\JwtGuard;
 use IgniteLabs\IdentityBridge\Auth\JwtValidator;
 use IgniteLabs\IdentityBridge\Client\IdentityBridgeClient;
+use IgniteLabs\IdentityBridge\Commands\CheckConnectionCommand;
+use IgniteLabs\IdentityBridge\Commands\ClearCacheCommand;
+use Illuminate\Foundation\Auth\User;
 use Illuminate\Support\Facades\Auth;
 
 test('registers JwksProvider as singleton', function () {
@@ -37,7 +40,7 @@ test('registers identity auth guard driver', function () {
     ]);
     $this->app['config']->set('auth.providers.users', [
         'driver' => 'eloquent',
-        'model' => \Illuminate\Foundation\Auth\User::class,
+        'model' => User::class,
     ]);
 
     $guard = Auth::guard('identity');
@@ -55,8 +58,8 @@ test('registers middleware aliases', function () {
 });
 
 test('registers artisan commands', function () {
-    $checkCmd = $this->app->make(\IgniteLabs\IdentityBridge\Commands\CheckConnectionCommand::class);
-    $clearCmd = $this->app->make(\IgniteLabs\IdentityBridge\Commands\ClearCacheCommand::class);
+    $checkCmd = $this->app->make(CheckConnectionCommand::class);
+    $clearCmd = $this->app->make(ClearCacheCommand::class);
 
     expect($checkCmd->getName())->toBe('identity-bridge:check')
         ->and($clearCmd->getName())->toBe('identity-bridge:clear-cache');

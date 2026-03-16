@@ -9,8 +9,8 @@ beforeEach(function () {
 
 it('outputs success messages when health endpoint returns 200 and token is obtained', function () {
     Http::fake([
-        'https://identity.ignitlabs.mv/health'       => Http::response([], 200),
-        'https://identity.ignitlabs.mv/oauth/token'  => Http::response(['access_token' => 'tok_abc'], 200),
+        'https://identity.ignitlabs.mv/health' => Http::response([], 200),
+        'https://identity.ignitlabs.mv/oauth/token' => Http::response(['access_token' => 'tok_abc'], 200),
     ]);
 
     $this->artisan('identity-bridge:check')
@@ -21,8 +21,8 @@ it('outputs success messages when health endpoint returns 200 and token is obtai
 
 it('outputs error and exits 1 when health endpoint returns non-200', function () {
     Http::fake([
-        'https://identity.ignitlabs.mv/health'       => Http::response([], 503),
-        'https://identity.ignitlabs.mv/oauth/token'  => Http::response(['access_token' => 'tok_abc'], 200),
+        'https://identity.ignitlabs.mv/health' => Http::response([], 503),
+        'https://identity.ignitlabs.mv/oauth/token' => Http::response(['access_token' => 'tok_abc'], 200),
     ]);
 
     $this->artisan('identity-bridge:check')
@@ -32,7 +32,7 @@ it('outputs error and exits 1 when health endpoint returns non-200', function ()
 
 it('outputs error and exits 1 when health endpoint throws a connection exception', function () {
     Http::fake([
-        'https://identity.ignitlabs.mv/health'      => fn () => throw new ConnectionException('Connection refused'),
+        'https://identity.ignitlabs.mv/health' => fn () => throw new ConnectionException('Connection refused'),
         'https://identity.ignitlabs.mv/oauth/token' => Http::response(['access_token' => 'tok_abc'], 200),
     ]);
 
@@ -43,8 +43,8 @@ it('outputs error and exits 1 when health endpoint throws a connection exception
 
 it('outputs health success but token error and exits 1 when getServiceToken fails', function () {
     Http::fake([
-        'https://identity.ignitlabs.mv/health'       => Http::response([], 200),
-        'https://identity.ignitlabs.mv/oauth/token'  => Http::response(['error' => 'unauthorized'], 401),
+        'https://identity.ignitlabs.mv/health' => Http::response([], 200),
+        'https://identity.ignitlabs.mv/oauth/token' => Http::response(['error' => 'unauthorized'], 401),
     ]);
 
     $this->artisan('identity-bridge:check')
@@ -57,8 +57,8 @@ it('uses the configured url in output messages', function () {
     config()->set('identity-bridge.url', 'https://custom.example.com');
 
     Http::fake([
-        'https://custom.example.com/health'       => Http::response([], 200),
-        'https://custom.example.com/oauth/token'  => Http::response(['access_token' => 'tok_xyz'], 200),
+        'https://custom.example.com/health' => Http::response([], 200),
+        'https://custom.example.com/oauth/token' => Http::response(['access_token' => 'tok_xyz'], 200),
     ]);
 
     $this->artisan('identity-bridge:check')

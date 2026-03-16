@@ -22,8 +22,8 @@ class KeyFixture
 
         return [
             'private' => $privatePem,
-            'public'  => $details['key'],
-            'kid'     => $kid,
+            'public' => $details['key'],
+            'kid' => $kid,
         ];
     }
 
@@ -41,8 +41,8 @@ class KeyFixture
     public static function makeJwks(string $publicPem, string $kid): array
     {
         $resource = openssl_pkey_get_public($publicPem);
-        $details  = openssl_pkey_get_details($resource);
-        $rsa      = $details['rsa'];
+        $details = openssl_pkey_get_details($resource);
+        $rsa = $details['rsa'];
 
         return [
             'keys' => [
@@ -51,8 +51,8 @@ class KeyFixture
                     'use' => 'sig',
                     'alg' => 'RS256',
                     'kid' => $kid,
-                    'n'   => rtrim(str_replace(['+', '/'], ['-', '_'], base64_encode($rsa['n'])), '='),
-                    'e'   => rtrim(str_replace(['+', '/'], ['-', '_'], base64_encode($rsa['e'])), '='),
+                    'n' => rtrim(str_replace(['+', '/'], ['-', '_'], base64_encode($rsa['n'])), '='),
+                    'e' => rtrim(str_replace(['+', '/'], ['-', '_'], base64_encode($rsa['e'])), '='),
                 ],
             ],
         ];
@@ -64,16 +64,16 @@ class KeyFixture
     public static function makeClaims(array $overrides = []): array
     {
         return array_merge([
-            'sub'               => 'ib_test_identity_id',
-            'iss'               => 'https://identity.ignitlabs.mv',
-            'aud'               => ['test-app'],
-            'jti'               => 'test-jti-' . uniqid(),
-            'iat'               => time(),
-            'exp'               => time() + 900,
-            'kyc_tier'          => 1,
-            'phone_verified'    => true,
-            'is_of_legal_age'   => true,
-            'aml_cleared'       => false,
+            'sub' => 'ib_test_identity_id',
+            'iss' => 'https://identity.ignitlabs.mv',
+            'aud' => ['test-app'],
+            'jti' => 'test-jti-'.uniqid(),
+            'iat' => time(),
+            'exp' => time() + 900,
+            'kyc_tier' => 1,
+            'phone_verified' => true,
+            'is_of_legal_age' => true,
+            'aml_cleared' => false,
             'ghost_identity_id' => null,
         ], $overrides);
     }

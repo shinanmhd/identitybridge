@@ -45,6 +45,7 @@ class JwtGuard implements Guard
         }
 
         $this->user = $user;
+
         return $this->user;
     }
 
@@ -76,6 +77,7 @@ class JwtGuard implements Guard
     public function setUser(Authenticatable $user): static
     {
         $this->user = $user;
+
         return $this;
     }
 
@@ -85,6 +87,7 @@ class JwtGuard implements Guard
         if (str_starts_with($header, 'Bearer ')) {
             return substr($header, 7);
         }
+
         return null;
     }
 }

@@ -1,22 +1,22 @@
 <?php
 
-use Illuminate\Support\Facades\DB;
 use IgniteLabs\IdentityBridge\AdminSso\StaffClaims;
 use IgniteLabs\IdentityBridge\AdminSso\StaffProvisioner;
+use Illuminate\Support\Facades\DB;
 
 function makeStaffClaims(string $id = 'admin-uuid-123', string $email = 'ali@ignitlabs.mv'): StaffClaims
 {
     return StaffClaims::fromPayload((object) [
-        'sub'         => $id,
+        'sub' => $id,
         'identity_id' => $id,
-        'name'        => 'Ali Waheed',
-        'email'       => $email,
-        'is_staff'    => true,
-        'aud'         => 'hadhiya-fihaara',
-        'iss'         => 'https://identity.ignitlabs.mv',
-        'iat'         => time() - 10,
-        'exp'         => time() + 3590,
-        'jti'         => 'jti-test',
+        'name' => 'Ali Waheed',
+        'email' => $email,
+        'is_staff' => true,
+        'aud' => 'hadhiya-fihaara',
+        'iss' => 'https://identity.ignitlabs.mv',
+        'iat' => time() - 10,
+        'exp' => time() + 3590,
+        'jti' => 'jti-test',
     ]);
 }
 
@@ -37,8 +37,8 @@ afterEach(function () {
 });
 
 it('creates a new staff member on first provision', function () {
-    $provisioner = new StaffProvisioner();
-    $claims      = makeStaffClaims();
+    $provisioner = new StaffProvisioner;
+    $claims = makeStaffClaims();
 
     $result = $provisioner->provision($claims);
 
@@ -50,14 +50,14 @@ it('creates a new staff member on first provision', function () {
 });
 
 it('updates an existing staff member on subsequent provision', function () {
-    $provisioner = new StaffProvisioner();
-    $claims      = makeStaffClaims();
+    $provisioner = new StaffProvisioner;
+    $claims = makeStaffClaims();
 
     $provisioner->provision($claims);
 
     // Now provision again with updated email
     $updatedClaims = makeStaffClaims('admin-uuid-123', 'ali.updated@ignitlabs.mv');
-    $result        = $provisioner->provision($updatedClaims);
+    $result = $provisioner->provision($updatedClaims);
 
     expect($result['created'])->toBeFalse();
 

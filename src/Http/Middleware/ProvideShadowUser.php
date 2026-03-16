@@ -27,7 +27,7 @@ class ProvideShadowUser
 
         /** @var ProvisionsShadowUser $provisioner */
         $provisioner = app(ProvisionsShadowUser::class);
-        $user        = $provisioner->provision($claims);
+        $user = $provisioner->provision($claims);
 
         Auth::guard('identity')->setUser($user);
 

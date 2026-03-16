@@ -17,8 +17,8 @@ class ClearCacheCommand extends Command
     {
         $prefix = config('identity-bridge.cache_prefix', 'ib_sdk_');
 
-        Cache::forget($prefix . 'jwks');
-        Cache::forget($prefix . 'service_token');
+        Cache::forget($prefix.'jwks');
+        Cache::forget($prefix.'service_token');
 
         $this->info('Identity Bridge SDK cache cleared.');
 

@@ -48,7 +48,7 @@ class InstallCommand extends Command
         $this->line('');
         $this->line("       'guards' => [");
         $this->line("           'identity' => ['driver' => 'identity', 'provider' => 'users'],");
-        $this->line("       ],");
+        $this->line('       ],');
         $this->newLine();
         $this->line('  <fg=yellow>3.</> Bind the <comment>ProvisionsShadowUser</comment> contract in a service provider:');
         $this->line('');
@@ -57,9 +57,9 @@ class InstallCommand extends Command
         $this->newLine();
         $this->line('  <fg=yellow>4.</> Add the webhook path to CSRF exceptions in <comment>bootstrap/app.php</comment>:');
         $this->line('');
-        $this->line("       ->withMiddleware(function (Middleware \$m) {");
+        $this->line('       ->withMiddleware(function (Middleware $m) {');
         $this->line("           \$m->validateCsrfTokens(except: ['webhooks/identity']);");
-        $this->line("       })");
+        $this->line('       })');
         $this->newLine();
         $this->line('  <fg=yellow>5.</> Run migrations:');
         $this->line('');

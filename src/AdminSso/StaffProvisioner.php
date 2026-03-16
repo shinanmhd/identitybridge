@@ -15,7 +15,7 @@ use Illuminate\Support\Str;
 final class StaffProvisioner
 {
     public function __construct(
-        private readonly string $table       = 'staff_members',
+        private readonly string $table = 'staff_members',
         private readonly string $clientAppId = '',
     ) {}
 
@@ -34,8 +34,8 @@ final class StaffProvisioner
             DB::table($this->table)
                 ->where('ib_identity_id', $claims->identityId)
                 ->update([
-                    'name'       => $claims->name,
-                    'email'      => $claims->email,
+                    'name' => $claims->name,
+                    'email' => $claims->email,
                     'updated_at' => now(),
                 ]);
 
@@ -45,13 +45,13 @@ final class StaffProvisioner
         $id = (string) Str::uuid();
 
         DB::table($this->table)->insert([
-            'id'             => $id,
+            'id' => $id,
             'ib_identity_id' => $claims->identityId,
-            'name'           => $claims->name,
-            'email'          => $claims->email,
-            'client_app_id'  => $this->clientAppId ?: null,
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'name' => $claims->name,
+            'email' => $claims->email,
+            'client_app_id' => $this->clientAppId ?: null,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         return ['id' => $id, 'created' => true];

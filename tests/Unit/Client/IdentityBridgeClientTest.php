@@ -25,7 +25,7 @@ it('fetches fresh token when cache is empty', function () {
     Http::fake([
         'https://identity.ignitlabs.mv/oauth/token' => Http::response([
             'access_token' => 'fresh-token-xyz',
-            'expires_in'   => 3600,
+            'expires_in' => 3600,
         ], 200),
     ]);
 
@@ -39,7 +39,7 @@ it('caches the access_token from response', function () {
     Http::fake([
         'https://identity.ignitlabs.mv/oauth/token' => Http::response([
             'access_token' => 'stored-token-999',
-            'expires_in'   => 3600,
+            'expires_in' => 3600,
         ], 200),
     ]);
 
@@ -53,7 +53,7 @@ it('caches token with configured TTL', function () {
     Http::fake([
         'https://identity.ignitlabs.mv/oauth/token' => Http::response([
             'access_token' => 'ttl-token',
-            'expires_in'   => 3600,
+            'expires_in' => 3600,
         ], 200),
     ]);
 
@@ -93,8 +93,8 @@ it('throws IdentityBridgeException on HTTP error fetching service token', functi
 
 it('getIdentity returns decoded JSON array', function () {
     Http::fake([
-        'https://identity.ignitlabs.mv/oauth/token'       => Http::response(['access_token' => 'svc-token'], 200),
-        'https://identity.ignitlabs.mv/api/identities/*'  => Http::response(['sub' => 'uuid-123', 'kyc_tier' => 2], 200),
+        'https://identity.ignitlabs.mv/oauth/token' => Http::response(['access_token' => 'svc-token'], 200),
+        'https://identity.ignitlabs.mv/api/identities/*' => Http::response(['sub' => 'uuid-123', 'kyc_tier' => 2], 200),
     ]);
 
     $client = $this->app->make(IdentityBridgeClient::class);
@@ -105,8 +105,8 @@ it('getIdentity returns decoded JSON array', function () {
 
 it('getIdentity calls the correct endpoint with Bearer token', function () {
     Http::fake([
-        'https://identity.ignitlabs.mv/oauth/token'                        => Http::response(['access_token' => 'bearer-tok'], 200),
-        'https://identity.ignitlabs.mv/api/identities/some-identity-id'    => Http::response(['sub' => 'some-identity-id'], 200),
+        'https://identity.ignitlabs.mv/oauth/token' => Http::response(['access_token' => 'bearer-tok'], 200),
+        'https://identity.ignitlabs.mv/api/identities/some-identity-id' => Http::response(['sub' => 'some-identity-id'], 200),
     ]);
 
     $client = $this->app->make(IdentityBridgeClient::class);
@@ -120,7 +120,7 @@ it('getIdentity calls the correct endpoint with Bearer token', function () {
 
 it('getIdentity throws IdentityBridgeException on 404', function () {
     Http::fake([
-        'https://identity.ignitlabs.mv/oauth/token'      => Http::response(['access_token' => 'svc-token'], 200),
+        'https://identity.ignitlabs.mv/oauth/token' => Http::response(['access_token' => 'svc-token'], 200),
         'https://identity.ignitlabs.mv/api/identities/*' => Http::response(['message' => 'Not Found'], 404),
     ]);
 
@@ -132,7 +132,7 @@ it('getIdentity throws IdentityBridgeException on 404', function () {
 
 it('getIdentity throws IdentityBridgeException on other HTTP errors', function () {
     Http::fake([
-        'https://identity.ignitlabs.mv/oauth/token'      => Http::response(['access_token' => 'svc-token'], 200),
+        'https://identity.ignitlabs.mv/oauth/token' => Http::response(['access_token' => 'svc-token'], 200),
         'https://identity.ignitlabs.mv/api/identities/*' => Http::response(['message' => 'Server error'], 500),
     ]);
 
@@ -144,8 +144,8 @@ it('getIdentity throws IdentityBridgeException on other HTTP errors', function (
 
 it('revokeToken returns true on success', function () {
     Http::fake([
-        'https://identity.ignitlabs.mv/oauth/token'          => Http::response(['access_token' => 'svc-token'], 200),
-        'https://identity.ignitlabs.mv/api/tokens/*/revoke'  => Http::response([], 200),
+        'https://identity.ignitlabs.mv/oauth/token' => Http::response(['access_token' => 'svc-token'], 200),
+        'https://identity.ignitlabs.mv/api/tokens/*/revoke' => Http::response([], 200),
     ]);
 
     $client = $this->app->make(IdentityBridgeClient::class);
@@ -155,8 +155,8 @@ it('revokeToken returns true on success', function () {
 
 it('revokeToken returns true on 204', function () {
     Http::fake([
-        'https://identity.ignitlabs.mv/oauth/token'          => Http::response(['access_token' => 'svc-token'], 200),
-        'https://identity.ignitlabs.mv/api/tokens/*/revoke'  => Http::response([], 204),
+        'https://identity.ignitlabs.mv/oauth/token' => Http::response(['access_token' => 'svc-token'], 200),
+        'https://identity.ignitlabs.mv/api/tokens/*/revoke' => Http::response([], 204),
     ]);
 
     $client = $this->app->make(IdentityBridgeClient::class);
@@ -166,8 +166,8 @@ it('revokeToken returns true on 204', function () {
 
 it('revokeToken throws IdentityBridgeException on error', function () {
     Http::fake([
-        'https://identity.ignitlabs.mv/oauth/token'          => Http::response(['access_token' => 'svc-token'], 200),
-        'https://identity.ignitlabs.mv/api/tokens/*/revoke'  => Http::response(['message' => 'Forbidden'], 403),
+        'https://identity.ignitlabs.mv/oauth/token' => Http::response(['access_token' => 'svc-token'], 200),
+        'https://identity.ignitlabs.mv/api/tokens/*/revoke' => Http::response(['message' => 'Forbidden'], 403),
     ]);
 
     $client = $this->app->make(IdentityBridgeClient::class);

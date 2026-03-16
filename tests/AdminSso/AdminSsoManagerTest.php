@@ -2,18 +2,18 @@
 
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
-use Illuminate\Http\Client\Factory as HttpFactory;
-use Illuminate\Support\Facades\Http;
 use IgniteLabs\IdentityBridge\AdminSso\AdminSsoManager;
 use IgniteLabs\IdentityBridge\AdminSso\StaffClaims;
 use IgniteLabs\IdentityBridge\Tests\Fixtures\KeyFixture;
+use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
-    $this->keys   = KeyFixture::generate();
+    $this->keys = KeyFixture::generate();
     $this->manager = new AdminSsoManager(
-        http:              app(HttpFactory::class),
+        http: app(HttpFactory::class),
         identityBridgeUrl: 'https://identity.ignitlabs.mv',
-        publicKey:         $this->keys['public'],
+        publicKey: $this->keys['public'],
     );
 });
 
@@ -29,10 +29,10 @@ it('generates a valid pkce pair', function () {
 
 it('builds a correct authorization url', function () {
     $url = $this->manager->buildAuthorizationUrl(
-        clientId:    'test-client-uuid',
+        clientId: 'test-client-uuid',
         redirectUri: 'https://paybr.test/admin/sso/callback',
-        state:       'random-state',
-        challenge:   'some-challenge',
+        state: 'random-state',
+        challenge: 'some-challenge',
     );
 
     expect($url)->toContain('identity.ignitlabs.mv/oauth/authorize')
@@ -45,16 +45,16 @@ it('builds a correct authorization url', function () {
 it('decodes a valid staff jwt', function () {
     $now = time();
     $token = JWT::encode([
-        'sub'         => 'admin-uuid',
+        'sub' => 'admin-uuid',
         'identity_id' => 'admin-uuid',
-        'name'        => 'Test Admin',
-        'email'       => 'admin@ignitlabs.mv',
-        'is_staff'    => true,
-        'aud'         => 'paybr',
-        'iss'         => 'https://identity.ignitlabs.mv',
-        'iat'         => $now,
-        'exp'         => $now + 3600,
-        'jti'         => 'unique-jti',
+        'name' => 'Test Admin',
+        'email' => 'admin@ignitlabs.mv',
+        'is_staff' => true,
+        'aud' => 'paybr',
+        'iss' => 'https://identity.ignitlabs.mv',
+        'iat' => $now,
+        'exp' => $now + 3600,
+        'jti' => 'unique-jti',
     ], $this->keys['private'], 'RS256');
 
     $claims = $this->manager->decodeToken($token);
@@ -67,16 +67,16 @@ it('decodes a valid staff jwt', function () {
 it('exchanges code for jwt via http', function () {
     $now = time();
     $token = JWT::encode([
-        'sub'         => 'admin-uuid',
+        'sub' => 'admin-uuid',
         'identity_id' => 'admin-uuid',
-        'name'        => 'Test Admin',
-        'email'       => 'admin@ignitlabs.mv',
-        'is_staff'    => true,
-        'aud'         => 'paybr',
-        'iss'         => 'https://identity.ignitlabs.mv',
-        'iat'         => $now,
-        'exp'         => $now + 3600,
-        'jti'         => 'jti-xyz',
+        'name' => 'Test Admin',
+        'email' => 'admin@ignitlabs.mv',
+        'is_staff' => true,
+        'aud' => 'paybr',
+        'iss' => 'https://identity.ignitlabs.mv',
+        'iat' => $now,
+        'exp' => $now + 3600,
+        'jti' => 'jti-xyz',
     ], $this->keys['private'], 'RS256');
 
     Http::fake([
@@ -84,32 +84,32 @@ it('exchanges code for jwt via http', function () {
     ]);
 
     $manager = new AdminSsoManager(
-        http:              app(HttpFactory::class),
+        http: app(HttpFactory::class),
         identityBridgeUrl: 'https://identity.ignitlabs.mv',
-        publicKey:         $this->keys['public'],
+        publicKey: $this->keys['public'],
     );
 
     $result = $manager->exchangeCode(
-        code:        'test-code',
-        verifier:    str_repeat('a', 64),
+        code: 'test-code',
+        verifier: str_repeat('a', 64),
         redirectUri: 'https://paybr.test/admin/sso/callback',
-        clientId:    'test-client-uuid',
+        clientId: 'test-client-uuid',
     );
 
     expect($result)->toBe($token);
 });
 
 it('AdminSsoManager builds authorization URL using identity-bridge.url config key', function () {
-    config(['identity-bridge.url'       => 'http://localhost:8091']);
+    config(['identity-bridge.url' => 'http://localhost:8091']);
     config(['identity-bridge.client_id' => 'paybridgecentral-uuid']);
 
-    $manager = app(\IgniteLabs\IdentityBridge\AdminSso\AdminSsoManager::class);
+    $manager = app(AdminSsoManager::class);
 
     $url = $manager->buildAuthorizationUrl(
-        clientId:    'paybridgecentral-uuid',
+        clientId: 'paybridgecentral-uuid',
         redirectUri: 'http://localhost:8090/admin/sso/callback',
-        state:       'teststate',
-        challenge:   'testchallenge',
+        state: 'teststate',
+        challenge: 'testchallenge',
     );
 
     // Must start with the configured IB Central URL and use /oauth/authorize
@@ -124,36 +124,36 @@ it('config file has app_slug and admin_sso keys', function () {
 
 it('rejects a token with HS256 algorithm header (algorithm confusion attack)', function () {
     // Attacker signs a token using the PUBLIC KEY as an HMAC secret
-    $now     = time();
+    $now = time();
     $payload = json_encode([
-        'sub'         => 'attacker',
+        'sub' => 'attacker',
         'identity_id' => 'attacker',
-        'name'        => 'Attacker',
-        'email'       => 'attacker@evil.com',
-        'is_staff'    => true,
-        'aud'         => 'paybr',
-        'iss'         => 'https://identity.ignitlabs.mv',
-        'iat'         => $now,
-        'exp'         => $now + 3600,
-        'jti'         => 'attacker-jti',
+        'name' => 'Attacker',
+        'email' => 'attacker@evil.com',
+        'is_staff' => true,
+        'aud' => 'paybr',
+        'iss' => 'https://identity.ignitlabs.mv',
+        'iat' => $now,
+        'exp' => $now + 3600,
+        'jti' => 'attacker-jti',
     ]);
 
-    $header    = base64_encode(json_encode(['typ' => 'JWT', 'alg' => 'HS256']));
-    $body      = base64_encode($payload);
+    $header = base64_encode(json_encode(['typ' => 'JWT', 'alg' => 'HS256']));
+    $body = base64_encode($payload);
     $signature = base64_encode(hash_hmac('sha256', "{$header}.{$body}", $this->keys['public'], true));
-    $token     = "{$header}.{$body}.{$signature}";
+    $token = "{$header}.{$body}.{$signature}";
 
     expect(fn () => $this->manager->decodeToken($token))
         ->toThrow(InvalidArgumentException::class, 'Token must use RS256 algorithm');
 });
 
 it('rejects a token with alg:none header', function () {
-    $now     = time();
-    $header  = rtrim(base64_encode(json_encode(['typ' => 'JWT', 'alg' => 'none'])), '=');
-    $body    = rtrim(base64_encode(json_encode([
-        'sub'      => 'attacker',
+    $now = time();
+    $header = rtrim(base64_encode(json_encode(['typ' => 'JWT', 'alg' => 'none'])), '=');
+    $body = rtrim(base64_encode(json_encode([
+        'sub' => 'attacker',
         'is_staff' => true,
-        'exp'      => $now + 3600,
+        'exp' => $now + 3600,
     ])), '=');
     $token = "{$header}.{$body}.";
 

@@ -14,7 +14,7 @@ class TokenRevoked
         public readonly string $revoked_at,
     ) {
         Cache::put(
-            config('identity-bridge.cache_prefix') . 'revoked:' . $this->jti,
+            config('identity-bridge.cache_prefix').'revoked:'.$this->jti,
             true,
             900,
         );

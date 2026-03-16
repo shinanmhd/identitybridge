@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgniteLabs\IdentityBridge\Facades;
 
+use IgniteLabs\IdentityBridge\Client\IdentityBridgeClient;
 use Illuminate\Support\Facades\Facade;
 
 /**
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static bool revokeToken(string $jti)
  * @method static string refreshServiceToken()
  *
- * @see \IgniteLabs\IdentityBridge\Client\IdentityBridgeClient
+ * @see IdentityBridgeClient
  */
 class Identity extends Facade
 {

@@ -2,8 +2,8 @@
 
 namespace IgniteLabs\IdentityBridge\Tests;
 
-use IgniteLabs\IdentityBridge\IdentityBridgeServiceProvider;
 use IgniteLabs\IdentityBridge\Facades\Identity;
+use IgniteLabs\IdentityBridge\IdentityBridgeServiceProvider;
 use Orchestra\Testbench\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase

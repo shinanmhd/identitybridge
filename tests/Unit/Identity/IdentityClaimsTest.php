@@ -43,14 +43,14 @@ it('isAmlCleared() is true when tier >= 3', function () {
 });
 
 it('isOfLegalAge() returns bool, defaults false', function () {
-    $with    = new IdentityClaims(['sub' => 'x', 'jti' => 'j', 'exp' => time() + 900, 'is_of_legal_age' => true]);
+    $with = new IdentityClaims(['sub' => 'x', 'jti' => 'j', 'exp' => time() + 900, 'is_of_legal_age' => true]);
     $without = new IdentityClaims(['sub' => 'x', 'jti' => 'j', 'exp' => time() + 900]);
     expect($with->isOfLegalAge())->toBeTrue()
         ->and($without->isOfLegalAge())->toBeFalse();
 });
 
 it('phoneVerified() returns bool, defaults false', function () {
-    $with    = new IdentityClaims(['sub' => 'x', 'jti' => 'j', 'exp' => time() + 900, 'phone_verified' => true]);
+    $with = new IdentityClaims(['sub' => 'x', 'jti' => 'j', 'exp' => time() + 900, 'phone_verified' => true]);
     $without = new IdentityClaims(['sub' => 'x', 'jti' => 'j', 'exp' => time() + 900]);
     expect($with->phoneVerified())->toBeTrue()
         ->and($without->phoneVerified())->toBeFalse();
@@ -72,7 +72,7 @@ it('jti() returns the jti claim', function () {
 });
 
 it('expiresAt() returns a Carbon from exp timestamp', function () {
-    $exp    = time() + 900;
+    $exp = time() + 900;
     $claims = new IdentityClaims(['sub' => 'x', 'jti' => 'j', 'exp' => $exp]);
     expect($claims->expiresAt()->timestamp)->toBe($exp);
 });

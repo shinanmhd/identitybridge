@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace IgniteLabs\IdentityBridge\Http\Controllers;
 
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use IgniteLabs\IdentityBridge\Events\GhostCreated;
 use IgniteLabs\IdentityBridge\Events\KeyRotated;
 use IgniteLabs\IdentityBridge\Events\TokenRevoked;
@@ -15,6 +12,9 @@ use IgniteLabs\IdentityBridge\Events\UserIdentityMerged;
 use IgniteLabs\IdentityBridge\Events\UserKycUpdated;
 use IgniteLabs\IdentityBridge\Events\UserPhoneUpdated;
 use IgniteLabs\IdentityBridge\Events\UserRegistered;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class WebhookController
 {
@@ -39,11 +39,11 @@ class WebhookController
     {
         // Schema validation — reject malformed or unknown events early.
         $request->validate([
-            'event'   => ['required', 'string', 'in:' . implode(',', self::KNOWN_EVENTS)],
+            'event' => ['required', 'string', 'in:'.implode(',', self::KNOWN_EVENTS)],
             'payload' => ['required', 'array'],
         ]);
 
-        $event   = $request->input('event');
+        $event = $request->input('event');
         $payload = $request->input('payload', []);
 
         // Timestamp validation — reject stale webhooks (replay of old deliveries).
@@ -56,8 +56,8 @@ class WebhookController
 
         // Replay protection — deduplicate by JTI within a 1-hour window.
         if (isset($payload['jti'])) {
-            $prefix   = config('identity-bridge.cache_prefix', 'ib_sdk_');
-            $cacheKey = $prefix . 'webhook_jti:' . $payload['jti'];
+            $prefix = config('identity-bridge.cache_prefix', 'ib_sdk_');
+            $cacheKey = $prefix.'webhook_jti:'.$payload['jti'];
 
             if (Cache::has($cacheKey)) {
                 // Already processed — respond 200 to prevent IB from retrying.

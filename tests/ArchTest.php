@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Console\Command;
+
 arch('source classes use strict types')
     ->expect('IgniteLabs\IdentityBridge')
     ->toUseStrictTypes();
@@ -14,7 +16,7 @@ arch('middleware classes are in Http\Middleware namespace')
 
 arch('exceptions extend RuntimeException')
     ->expect('IgniteLabs\IdentityBridge\Exceptions')
-    ->toExtend(\RuntimeException::class);
+    ->toExtend(RuntimeException::class);
 
 arch('no debugging statements')
     ->expect('IgniteLabs\IdentityBridge')
@@ -22,4 +24,4 @@ arch('no debugging statements')
 
 arch('commands extend Illuminate Command')
     ->expect('IgniteLabs\IdentityBridge\Commands')
-    ->toExtend(\Illuminate\Console\Command::class);
+    ->toExtend(Command::class);

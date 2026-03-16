@@ -13,7 +13,7 @@ class RequireKycTier
 {
     public function handle(Request $request, Closure $next, int|string $tier = 1): Response
     {
-        $tier   = (int) $tier;
+        $tier = (int) $tier;
         $claims = $request->attributes->get('identity_claims');
 
         if (! $claims instanceof IdentityClaims) {
@@ -22,9 +22,9 @@ class RequireKycTier
 
         if ($claims->kycTier() < $tier) {
             return response()->json([
-                'error'         => 'KYC verification required',
+                'error' => 'KYC verification required',
                 'required_tier' => $tier,
-                'verify_url'    => config('identity-bridge.kyc_url'),
+                'verify_url' => config('identity-bridge.kyc_url'),
             ], 403);
         }
 

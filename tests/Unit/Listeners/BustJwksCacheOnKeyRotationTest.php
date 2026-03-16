@@ -10,11 +10,11 @@ use Illuminate\Support\Facades\Event;
 
 it('busts the JWKS cache when KeyRotated is fired', function () {
     $prefix = config('identity-bridge.cache_prefix', 'ib_sdk_');
-    Cache::put($prefix . 'jwks', ['keys' => []], 3600);
+    Cache::put($prefix.'jwks', ['keys' => []], 3600);
 
     event(new KeyRotated('kid-2', 24));
 
-    expect(Cache::has($prefix . 'jwks'))->toBeFalse();
+    expect(Cache::has($prefix.'jwks'))->toBeFalse();
 });
 
 it('wires BustJwksCacheOnKeyRotation as a listener for KeyRotated', function () {

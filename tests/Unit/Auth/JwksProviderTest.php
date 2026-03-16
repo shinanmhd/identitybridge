@@ -18,7 +18,7 @@ it('fetches JWKS from URL on cache miss and caches result', function () {
     Http::fake(['*' => Http::response($this->jwks, 200)]);
 
     $provider = app(JwksProvider::class);
-    $keySet   = $provider->getKeySet();
+    $keySet = $provider->getKeySet();
 
     expect($keySet)->toHaveKey('test-key-1');
     Http::assertSentCount(1);
@@ -49,7 +49,7 @@ it('returns keyset indexed by kid', function () {
     Http::fake(['*' => Http::response($this->jwks, 200)]);
 
     $provider = app(JwksProvider::class);
-    $keySet   = $provider->getKeySet();
+    $keySet = $provider->getKeySet();
 
     expect($keySet)->toHaveKey('test-key-1');
 });
@@ -65,7 +65,7 @@ it('handles dual-key JWKS (rotation window)', function () {
     Http::fake(['*' => Http::response($dualJwks, 200)]);
 
     $provider = app(JwksProvider::class);
-    $keySet   = $provider->getKeySet();
+    $keySet = $provider->getKeySet();
 
     expect($keySet)->toHaveKey('test-key-1')
         ->and($keySet)->toHaveKey('test-key-2');

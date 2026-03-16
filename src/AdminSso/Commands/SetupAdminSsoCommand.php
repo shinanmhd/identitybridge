@@ -8,13 +8,14 @@ use Illuminate\Console\Command;
 
 class SetupAdminSsoCommand extends Command
 {
-    protected $signature   = 'identity-bridge:setup-admin-sso';
+    protected $signature = 'identity-bridge:setup-admin-sso';
+
     protected $description = 'Publish Admin SSO configuration and migration scaffold';
 
     public function handle(): void
     {
         $this->call('vendor:publish', [
-            '--tag'   => 'identity-bridge-admin-sso',
+            '--tag' => 'identity-bridge-admin-sso',
             '--force' => false,
         ]);
 
