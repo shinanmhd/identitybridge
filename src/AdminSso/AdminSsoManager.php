@@ -91,10 +91,23 @@ final class AdminSsoManager
     /**
      * Decode and validate a staff identity JWT, returning typed claims.
      *
-     * @throws InvalidArgumentException if the token is invalid or not a staff token
+     * @throws InvalidArgumentException if the token is invalid, uses wrong algorithm, or is not a staff token
      */
     public function decodeToken(string $token): StaffClaims
     {
+        // Verify algorithm before decode to prevent RS256→HS256 confusion attacks.
+        // An attacker could forge a token signed with the public key as an HMAC secret
+        // if we allow the library to accept whatever algorithm the header declares.
+        $parts = explode('.', $token);
+        if (count($parts) !== 3) {
+            throw new InvalidArgumentException('Invalid token format');
+        }
+
+        $header = json_decode(base64_decode(strtr($parts[0], '-_', '+/')), true);
+        if (($header['alg'] ?? null) !== 'RS256') {
+            throw new InvalidArgumentException('Token must use RS256 algorithm');
+        }
+
         $payload = JWT::decode($token, new Key($this->publicKey, 'RS256'));
 
         return StaffClaims::fromPayload($payload);

@@ -6,6 +6,7 @@ namespace IgniteLabs\IdentityBridge\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use IgniteLabs\IdentityBridge\Events\GhostCreated;
 use IgniteLabs\IdentityBridge\Events\KeyRotated;
 use IgniteLabs\IdentityBridge\Events\TokenRevoked;
@@ -17,10 +18,54 @@ use IgniteLabs\IdentityBridge\Events\UserRegistered;
 
 class WebhookController
 {
+    private const KNOWN_EVENTS = [
+        'user.registered',
+        'user.kyc_updated',
+        'user.phone_updated',
+        'user.deleted',
+        'ghost.created',
+        'user.identity_merged',
+        'token.revoked',
+        'key.rotated',
+    ];
+
+    /** Maximum age of a webhook before it is rejected (seconds). */
+    private const MAX_AGE_SECONDS = 300;
+
+    /** How long to remember processed webhook JTIs (seconds). */
+    private const JTI_TTL_SECONDS = 3600;
+
     public function handle(Request $request): JsonResponse
     {
+        // Schema validation — reject malformed or unknown events early.
+        $request->validate([
+            'event'   => ['required', 'string', 'in:' . implode(',', self::KNOWN_EVENTS)],
+            'payload' => ['required', 'array'],
+        ]);
+
         $event   = $request->input('event');
         $payload = $request->input('payload', []);
+
+        // Timestamp validation — reject stale webhooks (replay of old deliveries).
+        if (isset($payload['timestamp'])) {
+            $age = abs(time() - (int) $payload['timestamp']);
+            if ($age > self::MAX_AGE_SECONDS) {
+                return response()->json(['error' => 'Webhook timestamp too old'], 422);
+            }
+        }
+
+        // Replay protection — deduplicate by JTI within a 1-hour window.
+        if (isset($payload['jti'])) {
+            $prefix   = config('identity-bridge.cache_prefix', 'ib_sdk_');
+            $cacheKey = $prefix . 'webhook_jti:' . $payload['jti'];
+
+            if (Cache::has($cacheKey)) {
+                // Already processed — respond 200 to prevent IB from retrying.
+                return response()->json(['ok' => true]);
+            }
+
+            Cache::put($cacheKey, true, self::JTI_TTL_SECONDS);
+        }
 
         switch ($event) {
             case 'user.registered':
@@ -87,9 +132,6 @@ class WebhookController
                     $payload['transition_window_hours'],
                 ));
                 break;
-
-            default:
-                return response()->json(['error' => 'Unknown event'], 422);
         }
 
         return response()->json(['ok' => true]);

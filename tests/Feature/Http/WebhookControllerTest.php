@@ -157,7 +157,65 @@ it('key.rotated fires KeyRotated with new_kid', function () {
 });
 
 it('unknown event returns 422', function () {
-    webhookCall('unknown.event', [])->assertStatus(422)->assertJson(['error' => 'Unknown event']);
+    webhookCall('unknown.event', [])->assertStatus(422);
+});
+
+it('rejects missing event field with 422', function () {
+    $body   = json_encode(['payload' => ['identity_id' => 'x']]);
+    $secret = config('identity-bridge.webhook_secret');
+    $sig    = 'sha256=' . hash_hmac('sha256', $body, hash('sha256', $secret));
+
+    test()->call('POST', '/webhooks/identity', [], [], [],
+        ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json', 'HTTP_X_IDENTITY_SIGNATURE' => $sig],
+        $body,
+    )->assertStatus(422);
+});
+
+it('rejects missing payload field with 422', function () {
+    $body   = json_encode(['event' => 'user.registered']);
+    $secret = config('identity-bridge.webhook_secret');
+    $sig    = 'sha256=' . hash_hmac('sha256', $body, hash('sha256', $secret));
+
+    test()->call('POST', '/webhooks/identity', [], [], [],
+        ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json', 'HTTP_X_IDENTITY_SIGNATURE' => $sig],
+        $body,
+    )->assertStatus(422);
+});
+
+it('deduplicates webhook delivery — second call with same jti returns 200 without re-firing event', function () {
+    Event::fake();
+
+    $payload = ['identity_id' => 'user-dup', 'jti' => 'unique-webhook-jti-123'];
+
+    webhookCall('user.registered', $payload)->assertStatus(200)->assertJson(['ok' => true]);
+    webhookCall('user.registered', $payload)->assertStatus(200)->assertJson(['ok' => true]);
+
+    // Event should only fire once despite two webhook deliveries
+    Event::assertDispatchedTimes(UserRegistered::class, 1);
+});
+
+it('rejects webhook with timestamp older than 5 minutes', function () {
+    Event::fake();
+
+    $stalePayload = [
+        'identity_id' => 'user-stale',
+        'timestamp'   => time() - 400, // 400 seconds ago — beyond 300s window
+    ];
+
+    webhookCall('user.registered', $stalePayload)->assertStatus(422);
+    Event::assertNotDispatched(UserRegistered::class);
+});
+
+it('accepts webhook with timestamp within 5 minutes', function () {
+    Event::fake();
+
+    $freshPayload = [
+        'identity_id' => 'user-fresh',
+        'timestamp'   => time() - 60, // 60 seconds ago — within window
+    ];
+
+    webhookCall('user.registered', $freshPayload)->assertStatus(200);
+    Event::assertDispatched(UserRegistered::class);
 });
 
 it('missing signature returns 401', function () {

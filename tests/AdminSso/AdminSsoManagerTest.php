@@ -121,3 +121,47 @@ it('config file has app_slug and admin_sso keys', function () {
     expect(config('identity-bridge'))->toHaveKey('app_slug')
         ->and(config('identity-bridge'))->toHaveKey('admin_sso');
 });
+
+it('rejects a token with HS256 algorithm header (algorithm confusion attack)', function () {
+    // Attacker signs a token using the PUBLIC KEY as an HMAC secret
+    $now     = time();
+    $payload = json_encode([
+        'sub'         => 'attacker',
+        'identity_id' => 'attacker',
+        'name'        => 'Attacker',
+        'email'       => 'attacker@evil.com',
+        'is_staff'    => true,
+        'aud'         => 'paybr',
+        'iss'         => 'https://identity.ignitlabs.mv',
+        'iat'         => $now,
+        'exp'         => $now + 3600,
+        'jti'         => 'attacker-jti',
+    ]);
+
+    $header    = base64_encode(json_encode(['typ' => 'JWT', 'alg' => 'HS256']));
+    $body      = base64_encode($payload);
+    $signature = base64_encode(hash_hmac('sha256', "{$header}.{$body}", $this->keys['public'], true));
+    $token     = "{$header}.{$body}.{$signature}";
+
+    expect(fn () => $this->manager->decodeToken($token))
+        ->toThrow(InvalidArgumentException::class, 'Token must use RS256 algorithm');
+});
+
+it('rejects a token with alg:none header', function () {
+    $now     = time();
+    $header  = rtrim(base64_encode(json_encode(['typ' => 'JWT', 'alg' => 'none'])), '=');
+    $body    = rtrim(base64_encode(json_encode([
+        'sub'      => 'attacker',
+        'is_staff' => true,
+        'exp'      => $now + 3600,
+    ])), '=');
+    $token = "{$header}.{$body}.";
+
+    expect(fn () => $this->manager->decodeToken($token))
+        ->toThrow(InvalidArgumentException::class, 'Token must use RS256 algorithm');
+});
+
+it('rejects a malformed token that is not three dot-separated parts', function () {
+    expect(fn () => $this->manager->decodeToken('not.a.valid.jwt.token'))
+        ->toThrow(InvalidArgumentException::class);
+});
