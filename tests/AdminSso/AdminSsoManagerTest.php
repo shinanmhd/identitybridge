@@ -96,3 +96,26 @@ it('exchanges code for jwt via http', function () {
 
     expect($result)->toBe($token);
 });
+
+it('AdminSsoManager builds authorization URL using identity-bridge.url config key', function () {
+    config(['identity-bridge.url'      => 'http://localhost:8091']);
+    config(['identity-bridge.app_slug' => 'paybridgecentral']);
+
+    $manager = app(\IgniteLabs\IdentityBridge\AdminSso\AdminSsoManager::class);
+
+    $url = $manager->buildAuthorizationUrl(
+        appSlug:     'paybridgecentral',
+        redirectUri: 'http://localhost:8090/admin/sso/callback',
+        state:       'teststate',
+        challenge:   'testchallenge',
+    );
+
+    // If the base_url bug exists, URL will start with '/admin/sso/launch?' (empty base)
+    // After fix it must start with the IB Central URL
+    expect($url)->toStartWith('http://localhost:8091');
+});
+
+it('config file has app_slug and admin_sso keys', function () {
+    expect(config('identity-bridge'))->toHaveKey('app_slug')
+        ->and(config('identity-bridge'))->toHaveKey('admin_sso');
+});

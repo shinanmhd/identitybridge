@@ -16,4 +16,18 @@ return [
     'jwks_ttl'               => 3600,
     'service_token_ttl'      => 3500,
     'jwt_leeway'             => 30,
+
+    // The slug of this application as registered in IdentityBridge Central
+    'app_slug'               => env('IDENTITY_BRIDGE_APP_SLUG', ''),
+
+    // Optional: inline public key (falls back to storage/oauth-public.key)
+    'public_key'             => env('IDENTITY_BRIDGE_PUBLIC_KEY', null),
+
+    'admin_sso' => [
+        'callback_route'   => env('IB_SSO_CALLBACK_ROUTE', 'admin.sso.callback'),
+        'success_redirect' => env('IB_SSO_SUCCESS_REDIRECT', '/admin/dashboard'),
+        'error_redirect'   => env('IB_SSO_ERROR_REDIRECT', '/admin/login'),
+        'login_redirect'   => env('IB_SSO_LOGIN_REDIRECT', '/admin/login'),
+        'staff_table'      => env('IB_SSO_STAFF_TABLE', 'staff_members'),
+    ],
 ];

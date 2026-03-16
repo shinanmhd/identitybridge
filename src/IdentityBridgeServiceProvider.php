@@ -37,7 +37,7 @@ class IdentityBridgeServiceProvider extends ServiceProvider
 
             return new AdminSsoManager(
                 http:              $app->make(\Illuminate\Http\Client\Factory::class),
-                identityBridgeUrl: config('identity-bridge.base_url', ''),
+                identityBridgeUrl: config('identity-bridge.url', ''),
                 publicKey:         $publicKey,
             );
         });
