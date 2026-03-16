@@ -1,45 +1,60 @@
 {
-    "name": ":vendor_slug/:package_slug",
-    "description": ":package_description",
-    "keywords": [
-        ":vendor_name",
-        ":package_slug"
-    ],
-    "homepage": "https://github.com/:vendor_slug/:package_slug",
+    "name": "ignitelabs/identity-bridge",
+    "description": "Laravel SDK for IdentityBridge Central — JWT auth, shadow user provisioning, webhooks",
+    "type": "library",
+    "keywords": ["ignitelabs", "identity-bridge", "laravel", "jwt", "authentication"],
+    "homepage": "https://github.com/ignitelabs/identitybridge",
     "license": "MIT",
     "authors": [
         {
-            "name": ":author_name",
-            "email": "author@domain.com",
+            "name": "Shinan Mohamed",
+            "email": "shinaan.mv@gmail.com",
             "role": "Developer"
         }
     ],
     "require": {
-        "php": "^8.4"
+        "php": "^8.2",
+        "laravel/framework": "^11.0|^12.0",
+        "firebase/php-jwt": "^7.0"
     },
     "require-dev": {
-        :require_dev_testing,
-        :require_dev_codestyle,
-        "spatie/ray": "^1.28"
+        "pestphp/pest": "^4.0",
+        "pestphp/pest-plugin-laravel": "^4.0",
+        "orchestra/testbench": "^9.0|^10.0",
+        "laravel/pint": "^1.0"
     },
     "autoload": {
         "psr-4": {
-            "VendorName\\Skeleton\\": "src"
-        }
+            "IgniteLabs\\IdentityBridge\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {
-            "VendorName\\Skeleton\\Tests\\": "tests"
+            "IgniteLabs\\IdentityBridge\\Tests\\": "tests/"
         }
     },
     "scripts": {
-        :scripts_testing,
-        :scripts_codestyle
+        "test": "vendor/bin/pest",
+        "test-coverage": "vendor/bin/pest --coverage",
+        "format": "vendor/bin/pint"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "IgniteLabs\\IdentityBridge\\IdentityBridgeServiceProvider"
+            ],
+            "aliases": {
+                "Identity": "IgniteLabs\\IdentityBridge\\Facades\\Identity"
+            }
+        }
     },
     "config": {
         "sort-packages": true,
         "allow-plugins": {
-            :plugins_testing,
+            "pestphp/pest-plugin": true,
             "phpstan/extension-installer": true
         }
     },
