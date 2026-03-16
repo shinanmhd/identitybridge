@@ -24,7 +24,13 @@ final class AdminSsoManager
         private readonly HttpFactory $http,
         private readonly string      $identityBridgeUrl,
         private readonly string      $publicKey,
+        private readonly string      $internalUrl = '',
     ) {}
+
+    private function serverUrl(): string
+    {
+        return rtrim($this->internalUrl ?: $this->identityBridgeUrl, '/');
+    }
 
     /**
      * Generate a PKCE verifier/challenge pair.
@@ -40,20 +46,21 @@ final class AdminSsoManager
     }
 
     /**
-     * Build the IB authorization URL (for app-initiated flows only).
-     * Server-initiated flows are triggered via the IB dashboard launcher.
+     * Build the IB authorization URL (app-initiated PKCE flow).
+     * Redirects the admin to IB Central's login page with OAuth2 params.
      */
-    public function buildAuthorizationUrl(string $appSlug, string $redirectUri, string $state, string $challenge): string
+    public function buildAuthorizationUrl(string $clientId, string $redirectUri, string $state, string $challenge): string
     {
         $params = http_build_query([
-            'app'                   => $appSlug,
+            'response_type'         => 'code',
+            'client_id'             => $clientId,
             'redirect_uri'          => $redirectUri,
             'state'                 => $state,
             'code_challenge'        => $challenge,
             'code_challenge_method' => 'S256',
         ]);
 
-        return rtrim($this->identityBridgeUrl, '/') . '/admin/sso/launch?' . $params;
+        return rtrim($this->identityBridgeUrl, '/') . '/oauth/authorize?' . $params;
     }
 
     /**
@@ -61,13 +68,15 @@ final class AdminSsoManager
      *
      * @throws RuntimeException if the exchange fails
      */
-    public function exchangeCode(string $code, string $verifier, string $redirectUri): string
+    public function exchangeCode(string $code, string $verifier, string $redirectUri, string $clientId): string
     {
         $response = $this->http->post(
-            rtrim($this->identityBridgeUrl, '/') . '/oauth/admin/token',
+            $this->serverUrl() . '/oauth/admin/token',
             [
+                'grant_type'    => 'authorization_code',
                 'code'          => $code,
                 'code_verifier' => $verifier,
+                'client_id'     => $clientId,
                 'redirect_uri'  => $redirectUri,
             ]
         );

@@ -2,6 +2,10 @@
 
 return [
     'url'                    => env('IDENTITY_BRIDGE_URL'),
+    // Server-to-server URL (used for token exchange inside Docker/Sail).
+    // Defaults to IDENTITY_BRIDGE_URL when not set.
+    // Set this to http://host.docker.internal:PORT when both apps run in Docker.
+    'internal_url'           => env('IDENTITY_BRIDGE_INTERNAL_URL'),
     'client_id'              => env('IDENTITY_BRIDGE_CLIENT_ID'),
     'client_secret'          => env('IDENTITY_BRIDGE_CLIENT_SECRET'),
     'webhook_secret'         => env('IDENTITY_BRIDGE_WEBHOOK_SECRET'),

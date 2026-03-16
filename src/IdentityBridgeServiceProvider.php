@@ -31,21 +31,22 @@ class IdentityBridgeServiceProvider extends ServiceProvider
 
         $this->app->singleton(AdminSsoManager::class, function ($app) {
             $publicKey = config('identity-bridge.public_key')
-                ?? (file_exists(storage_path('oauth-public.key'))
+                ?: (file_exists(storage_path('oauth-public.key'))
                     ? file_get_contents(storage_path('oauth-public.key'))
                     : '');
 
             return new AdminSsoManager(
                 http:              $app->make(\Illuminate\Http\Client\Factory::class),
-                identityBridgeUrl: config('identity-bridge.url', ''),
+                identityBridgeUrl: (string) config('identity-bridge.url', ''),
                 publicKey:         $publicKey,
+                internalUrl:       (string) config('identity-bridge.internal_url', ''),
             );
         });
 
         $this->app->singleton(StaffProvisioner::class, function () {
             return new StaffProvisioner(
-                table:       config('identity-bridge.admin_sso.staff_table', 'staff_members'),
-                clientAppId: config('identity-bridge.client_id', ''),
+                table:       (string) config('identity-bridge.admin_sso.staff_table', 'staff_members'),
+                clientAppId: (string) config('identity-bridge.client_id', ''),
             );
         });
 
