@@ -34,33 +34,44 @@ class AdminSsoController extends Controller
         ]);
 
         $redirectUri = route(config('identity-bridge.admin_sso.callback_route', 'admin.sso.callback'));
-        $appSlug     = config('identity-bridge.app_slug');
+        $clientId    = (string) config('identity-bridge.client_id', '');
 
         return redirect($this->manager->buildAuthorizationUrl(
-            appSlug:    $appSlug,
+            clientId:    $clientId,
             redirectUri: $redirectUri,
-            state:      $state,
-            challenge:  $pkce['challenge'],
+            state:       $state,
+            challenge:   $pkce['challenge'],
         ));
     }
 
     /**
-     * Step 2 — Handle callback after IB redirects with code + verifier.
+     * Step 2 — Handle callback after IB redirects with code + state.
+     * Verifier is read from session (never sent over the wire by IB).
      * Exchanges code, decodes JWT, provisions staff member, writes session.
      */
     public function callback(Request $request): RedirectResponse
     {
         $code     = $request->query('code');
-        $verifier = $request->query('code_verifier');
+        $state    = $request->query('state');
+        $verifier = session('ib_sso_verifier');
+
+        // Validate state to prevent CSRF
+        if ($state && session('ib_sso_state') !== $state) {
+            return redirect(config('identity-bridge.admin_sso.error_redirect', '/admin/login'))
+                ->with('ib_sso_error', 'Invalid state parameter. Please try again.');
+        }
 
         if (! $code || ! $verifier) {
-            return redirect(config('identity-bridge.admin_sso.error_redirect', '/'))
+            return redirect(config('identity-bridge.admin_sso.error_redirect', '/admin/login'))
                 ->with('ib_sso_error', 'Missing code or verifier.');
         }
 
+        session()->forget(['ib_sso_verifier', 'ib_sso_state']);
+
         try {
             $redirectUri = route(config('identity-bridge.admin_sso.callback_route', 'admin.sso.callback'));
-            $token       = $this->manager->exchangeCode($code, $verifier, $redirectUri);
+            $clientId    = (string) config('identity-bridge.client_id', '');
+            $token       = $this->manager->exchangeCode($code, $verifier, $redirectUri, $clientId);
             $claims      = $this->manager->decodeToken($token);
 
             if ($claims->isExpired()) {
@@ -76,7 +87,7 @@ class AdminSsoController extends Controller
                 'ib_staff_email'       => $claims->email,
             ]);
         } catch (\Throwable $e) {
-            return redirect(config('identity-bridge.admin_sso.error_redirect', '/'))
+            return redirect(config('identity-bridge.admin_sso.error_redirect', '/admin/login'))
                 ->with('ib_sso_error', $e->getMessage());
         }
 

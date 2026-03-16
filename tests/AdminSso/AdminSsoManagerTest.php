@@ -29,14 +29,15 @@ it('generates a valid pkce pair', function () {
 
 it('builds a correct authorization url', function () {
     $url = $this->manager->buildAuthorizationUrl(
-        appSlug:    'paybr',
+        clientId:    'test-client-uuid',
         redirectUri: 'https://paybr.test/admin/sso/callback',
-        state:      'random-state',
-        challenge:  'some-challenge',
+        state:       'random-state',
+        challenge:   'some-challenge',
     );
 
-    expect($url)->toContain('identity.ignitlabs.mv/admin/sso/launch')
-        ->and($url)->toContain('app=paybr')
+    expect($url)->toContain('identity.ignitlabs.mv/oauth/authorize')
+        ->and($url)->toContain('client_id=test-client-uuid')
+        ->and($url)->toContain('response_type=code')
         ->and($url)->toContain('state=random-state')
         ->and($url)->toContain('code_challenge_method=S256');
 });
@@ -92,7 +93,31 @@ it('exchanges code for jwt via http', function () {
         code:        'test-code',
         verifier:    str_repeat('a', 64),
         redirectUri: 'https://paybr.test/admin/sso/callback',
+        clientId:    'test-client-uuid',
     );
 
     expect($result)->toBe($token);
+});
+
+it('AdminSsoManager builds authorization URL using identity-bridge.url config key', function () {
+    config(['identity-bridge.url'       => 'http://localhost:8091']);
+    config(['identity-bridge.client_id' => 'paybridgecentral-uuid']);
+
+    $manager = app(\IgniteLabs\IdentityBridge\AdminSso\AdminSsoManager::class);
+
+    $url = $manager->buildAuthorizationUrl(
+        clientId:    'paybridgecentral-uuid',
+        redirectUri: 'http://localhost:8090/admin/sso/callback',
+        state:       'teststate',
+        challenge:   'testchallenge',
+    );
+
+    // Must start with the configured IB Central URL and use /oauth/authorize
+    expect($url)->toStartWith('http://localhost:8091')
+        ->and($url)->toContain('/oauth/authorize');
+});
+
+it('config file has app_slug and admin_sso keys', function () {
+    expect(config('identity-bridge'))->toHaveKey('app_slug')
+        ->and(config('identity-bridge'))->toHaveKey('admin_sso');
 });
