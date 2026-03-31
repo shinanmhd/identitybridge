@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgniteLabs\IdentityBridge\Auth;
 
+use IgniteLabs\IdentityBridge\Identity\Contracts\ProvisionsShadowUser;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Contracts\Auth\UserProvider;
@@ -38,8 +39,13 @@ class JwtGuard implements Guard
         // Attach claims to request for identity() helper / middleware
         $this->request->attributes->set('identity_claims', $claims);
 
-        // Look up local shadow user by identity_id = sub claim
+        // Look up local shadow user by identity_id = sub claim.
+        // If not found and the app has bound ProvisionsShadowUser, auto-provision
+        // on first login (eliminates the need for a user.registered webhook).
         $user = $this->provider->retrieveByCredentials(['identity_id' => $claims->sub()]);
+        if ($user === null && app()->bound(ProvisionsShadowUser::class)) {
+            $user = app(ProvisionsShadowUser::class)->provision($claims);
+        }
         if ($user === null) {
             return null;
         }
