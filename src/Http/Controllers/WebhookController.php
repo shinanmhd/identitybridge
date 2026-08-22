@@ -11,6 +11,7 @@ use IgniteLabs\IdentityBridge\Events\UserDeleted;
 use IgniteLabs\IdentityBridge\Events\UserIdentityMerged;
 use IgniteLabs\IdentityBridge\Events\UserKycUpdated;
 use IgniteLabs\IdentityBridge\Events\UserPhoneUpdated;
+use IgniteLabs\IdentityBridge\Events\UserProfileUpdated;
 use IgniteLabs\IdentityBridge\Events\UserRegistered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class WebhookController
     private const KNOWN_EVENTS = [
         'user.registered',
         'user.kyc_updated',
+        'user.profile_updated',
         'user.phone_updated',
         'user.deleted',
         'ghost.created',
@@ -82,6 +84,24 @@ class WebhookController
                     $payload['is_of_legal_age'] ?? null,
                     $payload['verified_at'] ?? null,
                     $payload['revoked_at'] ?? null,
+                    $payload['submission_id'] ?? null,
+                    isset($payload['submission_version']) ? (int) $payload['submission_version'] : null,
+                    isset($payload['record_version']) ? (int) $payload['record_version'] : null,
+                    $payload['status'] ?? null,
+                    $payload['decision_at'] ?? null,
+                    $payload['rejection_note'] ?? null,
+                ));
+                break;
+
+            case 'user.profile_updated':
+                event(new UserProfileUpdated(
+                    $payload['identity_id'],
+                    (int) $payload['profile_version'],
+                    $payload['name'],
+                    $payload['email'] ?? null,
+                    $payload['avatar_url'] ?? null,
+                    isset($payload['avatar_version']) ? (int) $payload['avatar_version'] : null,
+                    $payload['updated_at'] ?? null,
                 ));
                 break;
 
