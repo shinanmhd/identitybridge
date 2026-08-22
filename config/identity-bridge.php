@@ -22,6 +22,11 @@ return [
     'jwks_ttl' => 3600,
     'service_token_ttl' => 3500,
     'jwt_leeway' => 30,
+    'http' => [
+        'timeout' => (int) env('IDENTITY_BRIDGE_HTTP_TIMEOUT', 5),
+        'connect_timeout' => (int) env('IDENTITY_BRIDGE_CONNECT_TIMEOUT', 2),
+        'retries' => (int) env('IDENTITY_BRIDGE_HTTP_RETRIES', 1),
+    ],
 
     // The slug of this application as registered in IdentityBridge Central
     'app_slug' => env('IDENTITY_BRIDGE_APP_SLUG', ''),
