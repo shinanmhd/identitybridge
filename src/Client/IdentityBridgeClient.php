@@ -227,15 +227,74 @@ class IdentityBridgeClient
     }
 
     /** @return array{data: list<KycReviewItem>, meta: array} */
-    public function listKycReviews(?string $status = null): array
-    {
+    public function listKycReviews(
+        ?string $status = null,
+        ?int $page = null,
+        ?int $perPage = null,
+        ?string $search = null,
+        ?string $claimState = null,
+        ?string $sort = null,
+        ?string $direction = null,
+    ): array {
+        $this->validateKycReviewListInput($status, $page, $perPage, $search, $claimState, $sort, $direction);
+
         $body = $this->json($this->serviceRequest()->get(
             $this->url('/api/service/kyc/reviews'),
-            array_filter(['status' => $status]),
+            array_filter([
+                'status' => $status,
+                'page' => $page,
+                'per_page' => $perPage,
+                'search' => $search === null ? null : trim($search),
+                'claim_state' => $claimState,
+                'sort' => $sort,
+                'direction' => $direction,
+            ], static fn (mixed $value): bool => $value !== null),
         ));
         $body['data'] = array_map(KycReviewItem::fromArray(...), $body['data'] ?? []);
 
         return $body;
+    }
+
+    private function validateKycReviewListInput(
+        ?string $status,
+        ?int $page,
+        ?int $perPage,
+        ?string $search,
+        ?string $claimState,
+        ?string $sort,
+        ?string $direction,
+    ): void {
+        if ($status !== null && ! in_array($status, ['pending', 'verified', 'rejected'], true)) {
+            throw new \InvalidArgumentException('Invalid KYC review status.');
+        }
+
+        if ($page !== null && $page < 1) {
+            throw new \InvalidArgumentException('KYC review page must be at least 1.');
+        }
+
+        if ($perPage !== null && ($perPage < 1 || $perPage > 100)) {
+            throw new \InvalidArgumentException('KYC review page size must be between 1 and 100.');
+        }
+
+        if ($search !== null && trim($search) === '') {
+            throw new \InvalidArgumentException('KYC review search must not be blank.');
+        }
+
+        if ($search !== null && mb_strlen(trim($search)) > 100) {
+            throw new \InvalidArgumentException('KYC review search must not exceed 100 characters.');
+        }
+
+        if ($claimState !== null && ! in_array($claimState, ['claimed', 'unclaimed'], true)) {
+            throw new \InvalidArgumentException('Invalid KYC review claim state.');
+        }
+
+        if ($sort !== null && ! in_array($sort, ['submitted_at', 'full_name', 'status', 'record_version'], true)) {
+            throw new \InvalidArgumentException('Invalid KYC review sort field.');
+        }
+
+        if ($direction !== null && ! in_array($direction, ['asc', 'desc'], true)) {
+            throw new \InvalidArgumentException('Invalid KYC review sort direction.');
+        }
     }
 
     public function getKycReview(string $submissionId): KycReviewItem

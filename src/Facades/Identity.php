@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static array authorizeKycEvidence(string $accessToken, string $submissionId, string $kind)
  * @method static array uploadKycEvidence(string $uploadUrl, string $filePath, string $fileName)
  * @method static \IgniteLabs\IdentityBridge\Dto\KycSubmission submitKycDraft(string $accessToken, string $submissionId, string $idempotencyKey)
- * @method static array listKycReviews(?string $status = null)
+ * @method static array listKycReviews(?string $status = null, ?int $page = null, ?int $perPage = null, ?string $search = null, ?string $claimState = null, ?string $sort = null, ?string $direction = null)
  * @method static \IgniteLabs\IdentityBridge\Dto\KycReviewItem getKycReview(string $submissionId)
  * @method static \IgniteLabs\IdentityBridge\Dto\KycReviewItem claimKycReview(string $submissionId, string $actorId, int $expectedVersion)
  * @method static \IgniteLabs\IdentityBridge\Dto\KycReviewItem releaseKycReview(string $submissionId, string $actorId, int $expectedVersion)
