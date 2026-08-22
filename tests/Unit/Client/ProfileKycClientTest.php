@@ -4,7 +4,9 @@ use IgniteLabs\IdentityBridge\Client\IdentityBridgeClient;
 use IgniteLabs\IdentityBridge\Dto\KycReviewItem;
 use IgniteLabs\IdentityBridge\Dto\KycSubmission;
 use IgniteLabs\IdentityBridge\Dto\Profile;
+use IgniteLabs\IdentityBridge\Exceptions\IdentityBridgeException;
 use IgniteLabs\IdentityBridge\Exceptions\KycConflictException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -14,8 +16,32 @@ beforeEach(function () {
         'identity-bridge.client_id' => 'hadhiya',
         'identity-bridge.client_secret' => 'secret',
         'identity-bridge.http.timeout' => 5,
+        'identity-bridge.http.upload_timeout' => 30,
         'identity-bridge.http.retries' => 1,
     ]);
+});
+
+it('uses a dedicated upload timeout without changing ordinary requests', function () {
+    $client = app(IdentityBridgeClient::class);
+    $ordinary = new ReflectionMethod($client, 'request');
+    $upload = new ReflectionMethod($client, 'uploadRequest');
+
+    expect($ordinary->invoke($client)->getOptions()['timeout'])->toBe(5)
+        ->and($upload->invoke($client)->getOptions()['timeout'])->toBe(30);
+});
+
+it('does not expose a signed upload url when transport fails', function () {
+    $signed = 'https://identity.example/upload?nonce=secret&signature=secret';
+    Http::fake(fn () => throw new ConnectionException("timed out for {$signed}"));
+    $file = tempnam(sys_get_temp_dir(), 'avatar-');
+    file_put_contents($file, 'image');
+
+    try {
+        expect(fn () => app(IdentityBridgeClient::class)->uploadAvatar($signed, $file, 'avatar.jpg'))
+            ->toThrow(IdentityBridgeException::class, 'Identity Bridge upload failed.');
+    } finally {
+        @unlink($file);
+    }
 });
 
 it('maps the authoritative profile and OTP mutation contract', function () {

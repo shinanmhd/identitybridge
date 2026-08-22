@@ -9,6 +9,7 @@ use IgniteLabs\IdentityBridge\Dto\KycSubmission;
 use IgniteLabs\IdentityBridge\Dto\Profile;
 use IgniteLabs\IdentityBridge\Exceptions\IdentityBridgeException;
 use IgniteLabs\IdentityBridge\Exceptions\KycConflictException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -172,7 +173,7 @@ class IdentityBridgeClient
 
     public function uploadAvatar(string $uploadUrl, string $filePath, string $fileName): array
     {
-        return $this->json($this->request()->attach('file', fopen($filePath, 'rb'), $fileName)->post($uploadUrl));
+        return $this->upload($uploadUrl, $filePath, $fileName);
     }
 
     public function finalizeAvatar(string $accessToken, string $uploadId): Profile
@@ -215,7 +216,7 @@ class IdentityBridgeClient
 
     public function uploadKycEvidence(string $uploadUrl, string $filePath, string $fileName): array
     {
-        return $this->json($this->request()->attach('file', fopen($filePath, 'rb'), $fileName)->post($uploadUrl));
+        return $this->upload($uploadUrl, $filePath, $fileName);
     }
 
     public function submitKycDraft(string $accessToken, string $submissionId, string $idempotencyKey): KycSubmission
@@ -386,6 +387,24 @@ class IdentityBridgeClient
             ->timeout((int) config('identity-bridge.http.timeout', 5))
             ->connectTimeout((int) config('identity-bridge.http.connect_timeout', 2))
             ->retry((int) config('identity-bridge.http.retries', 1), 100, throw: false);
+    }
+
+    private function uploadRequest(): PendingRequest
+    {
+        $timeout = max(5, min(120, (int) config('identity-bridge.http.upload_timeout', 30)));
+
+        return $this->request()->timeout($timeout);
+    }
+
+    private function upload(string $uploadUrl, string $filePath, string $fileName): array
+    {
+        try {
+            return $this->json($this->uploadRequest()
+                ->attach('file', fopen($filePath, 'rb'), $fileName)
+                ->post($uploadUrl));
+        } catch (ConnectionException) {
+            throw new IdentityBridgeException('Identity Bridge upload failed.');
+        }
     }
 
     private function json(Response $response): array

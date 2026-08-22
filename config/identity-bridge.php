@@ -24,6 +24,7 @@ return [
     'jwt_leeway' => 30,
     'http' => [
         'timeout' => (int) env('IDENTITY_BRIDGE_HTTP_TIMEOUT', 5),
+        'upload_timeout' => (int) env('IDENTITY_BRIDGE_UPLOAD_TIMEOUT', 30),
         'connect_timeout' => (int) env('IDENTITY_BRIDGE_CONNECT_TIMEOUT', 2),
         'retries' => (int) env('IDENTITY_BRIDGE_HTTP_RETRIES', 1),
     ],
