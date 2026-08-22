@@ -40,7 +40,7 @@ it('maps the authoritative profile and OTP mutation contract', function () {
 it('maps drafts and submits with an idempotency key', function () {
     Http::fake([
         '*/api/identity/me/kyc/drafts' => Http::response(kycFixture(), 201),
-        '*/api/identity/me/kyc/drafts/sub-1' => Http::response([...kycFixture(), 'draft_step' => 3], 200),
+        '*/api/identity/me/kyc/drafts/sub-1' => Http::response([...kycFixture(), 'draft_step' => 3, 'status' => 'rejected', 'rejection_note' => 'Please upload a clearer image.'], 200),
         '*/api/identity/me/kyc/drafts/sub-1/submit' => Http::response([...kycFixture(), 'status' => 'pending'], 200),
         '*/api/identity/me/kyc/drafts/sub-1/evidence-authorizations' => Http::response([
             'upload_id' => 'upload-1', 'upload_url' => 'https://identity.example/upload', 'expires_at' => '2026-08-22T12:00:00Z',
@@ -50,7 +50,7 @@ it('maps drafts and submits with an idempotency key', function () {
     $client = app(IdentityBridgeClient::class);
 
     expect($client->createKycDraft('user-token'))->toBeInstanceOf(KycSubmission::class)
-        ->and($client->updateKycDraft('user-token', 'sub-1', ['step' => 2, 'full_name' => 'Test User'])->draftStep)->toBe(3)
+        ->and($client->updateKycDraft('user-token', 'sub-1', ['step' => 2, 'full_name' => 'Test User'])->rejectionNote)->toBe('Please upload a clearer image.')
         ->and($client->authorizeKycEvidence('user-token', 'sub-1', 'selfie')['upload_id'])->toBe('upload-1')
         ->and($client->submitKycDraft('user-token', 'sub-1', str_repeat('i', 32))->status->value)->toBe('pending');
 

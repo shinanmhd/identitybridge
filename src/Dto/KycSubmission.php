@@ -22,6 +22,7 @@ final readonly class KycSubmission
         public array $evidence,
         public ?string $consentPolicyVersion,
         public ?string $submittedAt,
+        public ?string $rejectionNote = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -40,6 +41,7 @@ final readonly class KycSubmission
             array_values($data['evidence'] ?? []),
             self::nullableString($data['consent_policy_version'] ?? null),
             self::nullableString($data['submitted_at'] ?? null),
+            self::nullableString($data['rejection_note'] ?? null),
         );
     }
 
