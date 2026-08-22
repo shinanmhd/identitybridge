@@ -8,6 +8,7 @@ use IgniteLabs\IdentityBridge\Dto\KycReviewItem;
 use IgniteLabs\IdentityBridge\Dto\KycSubmission;
 use IgniteLabs\IdentityBridge\Dto\Profile;
 use IgniteLabs\IdentityBridge\Exceptions\IdentityBridgeException;
+use IgniteLabs\IdentityBridge\Exceptions\IdentityBridgeUploadException;
 use IgniteLabs\IdentityBridge\Exceptions\KycConflictException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory;
@@ -403,7 +404,7 @@ class IdentityBridgeClient
                 ->attach('file', fopen($filePath, 'rb'), $fileName)
                 ->post($uploadUrl));
         } catch (ConnectionException) {
-            throw new IdentityBridgeException('Identity Bridge upload failed.');
+            throw new IdentityBridgeUploadException('Identity Bridge upload failed.');
         }
     }
 

@@ -4,7 +4,7 @@ use IgniteLabs\IdentityBridge\Client\IdentityBridgeClient;
 use IgniteLabs\IdentityBridge\Dto\KycReviewItem;
 use IgniteLabs\IdentityBridge\Dto\KycSubmission;
 use IgniteLabs\IdentityBridge\Dto\Profile;
-use IgniteLabs\IdentityBridge\Exceptions\IdentityBridgeException;
+use IgniteLabs\IdentityBridge\Exceptions\IdentityBridgeUploadException;
 use IgniteLabs\IdentityBridge\Exceptions\KycConflictException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
@@ -38,7 +38,7 @@ it('does not expose a signed upload url when transport fails', function () {
 
     try {
         expect(fn () => app(IdentityBridgeClient::class)->uploadAvatar($signed, $file, 'avatar.jpg'))
-            ->toThrow(IdentityBridgeException::class, 'Identity Bridge upload failed.');
+            ->toThrow(IdentityBridgeUploadException::class, 'Identity Bridge upload failed.');
     } finally {
         @unlink($file);
     }
