@@ -210,7 +210,6 @@ class IdentityBridgeClient
         $body = $this->accountDeletionJson($response);
         if (! $this->isNonEmptyString($body['access_token'] ?? null)
             || ! $this->isNonEmptyString($body['refresh_token'] ?? null)
-            || ! $this->isNonEmptyString($body['token_type'] ?? null)
             || ! $this->isBoundedInt($body['expires_in'] ?? null, 1, 86400)) {
             throw AccountDeletionException::invalidResponse($response->status());
         }

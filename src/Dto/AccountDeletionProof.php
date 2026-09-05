@@ -14,7 +14,6 @@ final readonly class AccountDeletionProof
     public function __construct(
         public string $accessToken,
         public string $refreshToken,
-        public string $tokenType,
         public int $expiresIn,
     ) {}
 
@@ -23,7 +22,6 @@ final readonly class AccountDeletionProof
         return new self(
             (string) $data['access_token'],
             (string) $data['refresh_token'],
-            (string) $data['token_type'],
             (int) $data['expires_in'],
         );
     }

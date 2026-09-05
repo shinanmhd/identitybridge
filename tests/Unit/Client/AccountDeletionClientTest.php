@@ -28,7 +28,6 @@ it('requests and confirms an account deletion otp without sending caller supplie
         '*/api/identity/me/account-deletion/otp/confirm' => Http::response([
             'access_token' => 'fresh-access-token',
             'refresh_token' => 'fresh-refresh-token',
-            'token_type' => 'Bearer',
             'expires_in' => 900,
         ]),
     ]);
@@ -48,7 +47,6 @@ it('requests and confirms an account deletion otp without sending caller supplie
     expect($proof)->toBeInstanceOf(AccountDeletionProof::class)
         ->and($proof->accessToken)->toBe('fresh-access-token')
         ->and($proof->refreshToken)->toBe('fresh-refresh-token')
-        ->and($proof->tokenType)->toBe('Bearer')
         ->and($proof->expiresIn)->toBe(900);
 
     Http::assertSent(function (Request $request): bool {
@@ -272,9 +270,9 @@ it('rejects malformed successful otp confirmation payloads', function (array $bo
         '123456',
     ))->toThrow(AccountDeletionException::class, 'Identity Bridge account deletion request failed.');
 })->with([
-    'missing token type' => [['access_token' => 'access', 'refresh_token' => 'refresh', 'expires_in' => 900]],
-    'empty access token' => [['access_token' => '', 'refresh_token' => 'refresh', 'token_type' => 'Bearer', 'expires_in' => 900]],
-    'unbounded expiry' => [['access_token' => 'access', 'refresh_token' => 'refresh', 'token_type' => 'Bearer', 'expires_in' => 86401]],
+    'empty access token' => [['access_token' => '', 'refresh_token' => 'refresh', 'expires_in' => 900]],
+    'empty refresh token' => [['access_token' => 'access', 'refresh_token' => '', 'expires_in' => 900]],
+    'unbounded expiry' => [['access_token' => 'access', 'refresh_token' => 'refresh', 'expires_in' => 86401]],
 ]);
 
 it('rejects malformed successful service acknowledgements', function (string $operation, array $body) {
