@@ -193,11 +193,12 @@ class IdentityBridgeClient
         string $accessToken,
         string $challengeId,
         string $code,
+        string $idempotencyKey,
         array $traceHeaders = [],
     ): AccountDeletionProof {
         try {
             $response = $this->withTraceHeaders(
-                $this->userRequest($accessToken),
+                $this->userRequest($accessToken)->withHeader('Idempotency-Key', $idempotencyKey),
                 $traceHeaders,
             )->post($this->url('/api/identity/me/account-deletion/otp/confirm'), [
                 'challenge_id' => $challengeId,

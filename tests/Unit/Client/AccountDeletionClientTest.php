@@ -41,6 +41,7 @@ it('requests and confirms an account deletion otp without sending caller supplie
         'user-token',
         $challenge['challenge_id'],
         '123456',
+        '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e',
         ['tracestate' => 'vendor=value'],
     );
 
@@ -62,6 +63,7 @@ it('requests and confirms an account deletion otp without sending caller supplie
     Http::assertSent(fn (Request $request): bool => ! str_ends_with($request->url(), '/otp/confirm')
         || ($request->data() === ['challenge_id' => $challenge['challenge_id'], 'code' => '123456']
             && $request->hasHeader('Authorization', 'Bearer user-token')
+            && $request->hasHeader('Idempotency-Key', '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e')
             && $request->hasHeader('tracestate', 'vendor=value')));
 });
 
@@ -139,6 +141,7 @@ it('classifies confirmation validation failures as terminal', function () {
             'user-token',
             '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e',
             '123456',
+            '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e',
         );
         $this->fail('Expected account deletion exception.');
     } catch (AccountDeletionException $exception) {
@@ -215,6 +218,7 @@ it('sanitizes user transport failures without chaining request secrets', functio
             'user-secret-token',
             '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e',
             '654321',
+            '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e',
         );
         $this->fail('Expected account deletion exception.');
     } catch (AccountDeletionException $exception) {
@@ -268,6 +272,7 @@ it('rejects malformed successful otp confirmation payloads', function (array $bo
         'user-token',
         '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e',
         '123456',
+        '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e',
     ))->toThrow(AccountDeletionException::class, 'Identity Bridge account deletion request failed.');
 })->with([
     'empty access token' => [['access_token' => '', 'refresh_token' => 'refresh', 'expires_in' => 900]],
