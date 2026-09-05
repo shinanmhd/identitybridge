@@ -173,6 +173,40 @@ it('classifies confirmation validation failures as terminal', function () {
     }
 });
 
+it('preserves a sanitized expired idempotency result for explicit confirmation', function () {
+    Http::fake(['*/api/identity/me/account-deletion/otp/confirm' => Http::response([
+        'error' => 'idempotency_expired',
+        'message' => 'upstream secret detail',
+        'access_token' => 'must-not-leak-access',
+        'refresh_token' => 'must-not-leak-refresh',
+        'code' => '654321',
+    ], 409)]);
+
+    try {
+        app(IdentityBridgeClient::class)->confirmAccountDeletionOtpIdempotently(
+            'user-secret-token',
+            '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e',
+            '654321',
+            '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e',
+        );
+        $this->fail('Expected account deletion exception.');
+    } catch (AccountDeletionException $exception) {
+        expect($exception->category)->toBe('conflict')
+            ->and($exception->codeName)->toBe('idempotency_expired')
+            ->and($exception->status)->toBe(409)
+            ->and($exception->isRetryable())->toBeFalse();
+
+        $visible = (string) $exception.serialize($exception).json_encode(get_object_vars($exception), JSON_THROW_ON_ERROR);
+        expect($visible)->not->toContain(
+            'upstream secret detail',
+            'must-not-leak-access',
+            'must-not-leak-refresh',
+            'user-secret-token',
+            '654321',
+        );
+    }
+});
+
 it('qualifies a revoke-all not-found response without string matching', function () {
     Http::fake(['*/api/service/users/*/sessions/revoke-all' => Http::response([
         'error' => 'not_found',

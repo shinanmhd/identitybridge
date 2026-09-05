@@ -494,6 +494,7 @@ class IdentityBridgeClient
                 'invalid_challenge' => 422,
                 'not_found' => 404,
                 'idempotency_conflict' => 409,
+                'idempotency_expired' => 409,
                 'deletion_actor_forbidden' => 403,
             ];
             $code = is_string($upstreamCode) && ($allowedCodes[$upstreamCode] ?? null) === $status
