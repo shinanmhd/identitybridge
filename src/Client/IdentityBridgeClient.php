@@ -16,6 +16,7 @@ use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class IdentityBridgeClient
 {
@@ -190,6 +191,22 @@ class IdentityBridgeClient
 
     /** @param array<string, string> $traceHeaders */
     public function confirmAccountDeletionOtp(
+        string $accessToken,
+        string $challengeId,
+        string $code,
+        array $traceHeaders = [],
+    ): AccountDeletionProof {
+        return $this->confirmAccountDeletionOtpIdempotently(
+            $accessToken,
+            $challengeId,
+            $code,
+            (string) Str::uuid(),
+            $traceHeaders,
+        );
+    }
+
+    /** @param array<string, string> $traceHeaders */
+    public function confirmAccountDeletionOtpIdempotently(
         string $accessToken,
         string $challengeId,
         string $code,

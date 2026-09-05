@@ -37,7 +37,7 @@ it('requests and confirms an account deletion otp without sending caller supplie
         'traceparent' => '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
         'Authorization' => 'attacker-controlled',
     ]);
-    $proof = $client->confirmAccountDeletionOtp(
+    $proof = $client->confirmAccountDeletionOtpIdempotently(
         'user-token',
         $challenge['challenge_id'],
         '123456',
@@ -65,6 +65,26 @@ it('requests and confirms an account deletion otp without sending caller supplie
             && $request->hasHeader('Authorization', 'Bearer user-token')
             && $request->hasHeader('Idempotency-Key', '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e')
             && $request->hasHeader('tracestate', 'vendor=value')));
+});
+
+it('preserves the legacy confirmation signature while supplying a valid one-shot key', function () {
+    Http::fake(['*/api/identity/me/account-deletion/otp/confirm' => Http::response([
+        'access_token' => 'fresh-access-token',
+        'refresh_token' => 'fresh-refresh-token',
+        'expires_in' => 900,
+    ])]);
+
+    app(IdentityBridgeClient::class)->confirmAccountDeletionOtp(
+        'user-token',
+        '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e',
+        '123456',
+        ['tracestate' => 'vendor=value'],
+    );
+
+    Http::assertSent(fn (Request $request): bool => preg_match(
+        '/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i',
+        $request->header('Idempotency-Key')[0] ?? '',
+    ) === 1 && $request->hasHeader('tracestate', 'vendor=value'));
 });
 
 it('revokes all identity sessions with scoped service credentials and trace context', function () {
@@ -137,7 +157,7 @@ it('classifies confirmation validation failures as terminal', function () {
     ], 422)]);
 
     try {
-        app(IdentityBridgeClient::class)->confirmAccountDeletionOtp(
+        app(IdentityBridgeClient::class)->confirmAccountDeletionOtpIdempotently(
             'user-token',
             '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e',
             '123456',
@@ -214,7 +234,7 @@ it('sanitizes user transport failures without chaining request secrets', functio
     ));
 
     try {
-        app(IdentityBridgeClient::class)->confirmAccountDeletionOtp(
+        app(IdentityBridgeClient::class)->confirmAccountDeletionOtpIdempotently(
             'user-secret-token',
             '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e',
             '654321',
@@ -268,7 +288,7 @@ it('rejects malformed successful otp request payloads', function (array $body) {
 it('rejects malformed successful otp confirmation payloads', function (array $body) {
     Http::fake(['*/api/identity/me/account-deletion/otp/confirm' => Http::response($body)]);
 
-    expect(fn () => app(IdentityBridgeClient::class)->confirmAccountDeletionOtp(
+    expect(fn () => app(IdentityBridgeClient::class)->confirmAccountDeletionOtpIdempotently(
         'user-token',
         '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e',
         '123456',
