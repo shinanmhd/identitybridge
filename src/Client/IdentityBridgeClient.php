@@ -8,6 +8,7 @@ use IgniteLabs\IdentityBridge\Dto\AccountDeletionProof;
 use IgniteLabs\IdentityBridge\Dto\KycReviewItem;
 use IgniteLabs\IdentityBridge\Dto\KycSubmission;
 use IgniteLabs\IdentityBridge\Dto\Profile;
+use IgniteLabs\IdentityBridge\Exceptions\AccountDeletionException;
 use IgniteLabs\IdentityBridge\Exceptions\IdentityBridgeException;
 use IgniteLabs\IdentityBridge\Exceptions\KycConflictException;
 use Illuminate\Http\Client\Factory;
@@ -407,7 +408,48 @@ class IdentityBridgeClient
     private function accountDeletionJson(Response $response): array
     {
         if ($response->failed()) {
-            throw new IdentityBridgeException((string) ($response->json('message') ?? $response->json('error') ?? 'Identity Bridge request failed.'));
+            $status = $response->status();
+            $upstreamCode = $response->json('error');
+            $allowedCodes = [
+                'too_many_requests' => 429,
+                'too_many_attempts' => 429,
+                'otp_unavailable' => 503,
+                'internal_error' => 500,
+                'invalid_challenge' => 422,
+                'not_found' => 404,
+                'idempotency_conflict' => 409,
+                'deletion_actor_forbidden' => 403,
+            ];
+            $code = is_string($upstreamCode) && ($allowedCodes[$upstreamCode] ?? null) === $status
+                ? $upstreamCode
+                : match (true) {
+                    $status === 401 => 'authentication_failed',
+                    $status === 403 => 'forbidden',
+                    $status === 404 => 'not_found',
+                    $status === 409 => 'conflict',
+                    $status === 422 => 'validation_failed',
+                    $status === 429 => 'rate_limited',
+                    $status >= 500 => 'service_unavailable',
+                    default => 'request_failed',
+                };
+            $category = match (true) {
+                $status === 401 => 'authentication',
+                $status === 403 => 'authorization',
+                $status === 404 => 'not_found',
+                $status === 409 => 'conflict',
+                $status === 422 => 'validation',
+                $status === 429 => 'rate_limited',
+                $status >= 500 => 'server',
+                default => 'request',
+            };
+            $retryAfter = $response->json('retry_after');
+
+            throw new AccountDeletionException(
+                $category,
+                $code,
+                $status,
+                is_int($retryAfter) && $retryAfter >= 0 && $retryAfter <= 86400 ? $retryAfter : null,
+            );
         }
 
         return $response->json() ?? [];
