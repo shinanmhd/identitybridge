@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgniteLabs\IdentityBridge\Client;
 
+use IgniteLabs\IdentityBridge\Dto\AccountDeletionProof;
 use IgniteLabs\IdentityBridge\Dto\KycReviewItem;
 use IgniteLabs\IdentityBridge\Dto\KycSubmission;
 use IgniteLabs\IdentityBridge\Dto\Profile;
@@ -155,6 +156,67 @@ class IdentityBridgeClient
             'challenge_id' => $challengeId,
             'code' => $code,
         ]));
+    }
+
+    /**
+     * Request an account-deletion challenge for the bearer-token subject.
+     *
+     * @param  array<string, string>  $traceHeaders
+     * @return array{challenge_id: string, expires_at: string, attempts_remaining: int, expires_in: int}
+     */
+    public function requestAccountDeletionOtp(string $accessToken, array $traceHeaders = []): array
+    {
+        return $this->accountDeletionJson($this->withTraceHeaders(
+            $this->userRequest($accessToken),
+            $traceHeaders,
+        )->post($this->url('/api/identity/me/account-deletion/otp')));
+    }
+
+    /** @param array<string, string> $traceHeaders */
+    public function confirmAccountDeletionOtp(
+        string $accessToken,
+        string $challengeId,
+        string $code,
+        array $traceHeaders = [],
+    ): AccountDeletionProof {
+        return AccountDeletionProof::fromArray($this->accountDeletionJson($this->withTraceHeaders(
+            $this->userRequest($accessToken),
+            $traceHeaders,
+        )->post($this->url('/api/identity/me/account-deletion/otp/confirm'), [
+            'challenge_id' => $challengeId,
+            'code' => $code,
+        ])));
+    }
+
+    /**
+     * @param  array<string, string>  $traceHeaders
+     * @return array{identity_id: string, revoked_sessions: int}
+     */
+    public function revokeAllSessions(string $identityId, array $traceHeaders = []): array
+    {
+        return $this->accountDeletionJson($this->withTraceHeaders(
+            $this->serviceRequest(),
+            $traceHeaders,
+        )->post($this->url("/api/service/users/{$identityId}/sessions/revoke-all")));
+    }
+
+    /**
+     * @param  array<string, string>  $traceHeaders
+     * @return array{identity_id: string, erased: bool, already_erased: bool, erased_at: string}
+     */
+    public function eraseIdentity(
+        string $identityId,
+        string $adminId,
+        string $idempotencyKey,
+        array $traceHeaders = [],
+    ): array {
+        $request = $this->withTraceHeaders($this->serviceRequest(), $traceHeaders)
+            ->withHeader('Idempotency-Key', $idempotencyKey);
+
+        return $this->accountDeletionJson($request->post(
+            $this->url("/api/service/users/{$identityId}/erase"),
+            ['admin_id' => $adminId],
+        ));
     }
 
     public function updateProfile(string $accessToken, string $grantToken, array $attributes): Profile
@@ -340,6 +402,35 @@ class IdentityBridgeClient
         }
 
         return $response->json() ?? [];
+    }
+
+    private function accountDeletionJson(Response $response): array
+    {
+        if ($response->failed()) {
+            throw new IdentityBridgeException((string) ($response->json('message') ?? $response->json('error') ?? 'Identity Bridge request failed.'));
+        }
+
+        return $response->json() ?? [];
+    }
+
+    /** @param array<string, string> $headers */
+    private function withTraceHeaders(PendingRequest $request, array $headers): PendingRequest
+    {
+        $traceHeaders = [];
+
+        foreach ($headers as $name => $value) {
+            $canonicalName = match (strtolower($name)) {
+                'traceparent' => 'traceparent',
+                'tracestate' => 'tracestate',
+                default => null,
+            };
+
+            if ($canonicalName !== null && $value !== '') {
+                $traceHeaders[$canonicalName] = $value;
+            }
+        }
+
+        return $traceHeaders === [] ? $request : $request->withHeaders($traceHeaders);
     }
 
     private function url(string $path): string
