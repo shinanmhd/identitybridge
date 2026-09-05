@@ -3,6 +3,7 @@
 use IgniteLabs\IdentityBridge\Client\IdentityBridgeClient;
 use IgniteLabs\IdentityBridge\Dto\AccountDeletionProof;
 use IgniteLabs\IdentityBridge\Exceptions\AccountDeletionException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -27,6 +28,7 @@ it('requests and confirms an account deletion otp without sending caller supplie
         '*/api/identity/me/account-deletion/otp/confirm' => Http::response([
             'access_token' => 'fresh-access-token',
             'refresh_token' => 'fresh-refresh-token',
+            'token_type' => 'Bearer',
             'expires_in' => 900,
         ]),
     ]);
@@ -46,6 +48,7 @@ it('requests and confirms an account deletion otp without sending caller supplie
     expect($proof)->toBeInstanceOf(AccountDeletionProof::class)
         ->and($proof->accessToken)->toBe('fresh-access-token')
         ->and($proof->refreshToken)->toBe('fresh-refresh-token')
+        ->and($proof->tokenType)->toBe('Bearer')
         ->and($proof->expiresIn)->toBe(900);
 
     Http::assertSent(function (Request $request): bool {
@@ -203,3 +206,104 @@ it('sanitizes malformed retry timing', function (mixed $retryAfter) {
         expect($exception->retryAfter)->toBeNull();
     }
 })->with(['negative' => -1, 'string' => '30', 'too large' => 86401]);
+
+it('sanitizes user transport failures without chaining request secrets', function () {
+    Http::fake(fn (Request $request) => throw new ConnectionException(
+        "failed {$request->url()} bearer user-secret-token",
+    ));
+
+    try {
+        app(IdentityBridgeClient::class)->confirmAccountDeletionOtp(
+            'user-secret-token',
+            '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e',
+            '654321',
+        );
+        $this->fail('Expected account deletion exception.');
+    } catch (AccountDeletionException $exception) {
+        assertSanitizedTransportFailure($exception, [
+            'user-secret-token',
+            '654321',
+            '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e',
+            '/account-deletion/otp/confirm',
+        ]);
+    }
+});
+
+it('sanitizes service transport failures without chaining request secrets', function () {
+    config(['identity-bridge.client_secret' => 'central-client-secret']);
+    Http::fake(fn (Request $request) => throw new ConnectionException(
+        "failed {$request->url()} secret central-client-secret key erase-idempotency-key",
+    ));
+
+    try {
+        app(IdentityBridgeClient::class)->eraseIdentity(
+            'identity-sensitive-value',
+            'admin-sensitive-value',
+            'erase-idempotency-key',
+        );
+        $this->fail('Expected account deletion exception.');
+    } catch (AccountDeletionException $exception) {
+        assertSanitizedTransportFailure($exception, [
+            'central-client-secret',
+            'erase-idempotency-key',
+            'identity-sensitive-value',
+            'admin-sensitive-value',
+        ]);
+    }
+});
+
+it('rejects malformed successful otp request payloads', function (array $body) {
+    Http::fake(['*/api/identity/me/account-deletion/otp' => Http::response($body, 201)]);
+
+    expect(fn () => app(IdentityBridgeClient::class)->requestAccountDeletionOtp('user-token'))
+        ->toThrow(AccountDeletionException::class, 'Identity Bridge account deletion request failed.');
+})->with([
+    'invalid challenge' => [['challenge_id' => 'not-opaque', 'expires_at' => '2026-09-05T12:10:00+05:00', 'attempts_remaining' => 5, 'expires_in' => 600]],
+    'invalid expiry' => [['challenge_id' => '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e', 'expires_at' => 'not-a-date', 'attempts_remaining' => 5, 'expires_in' => 600]],
+    'invalid attempts' => [['challenge_id' => '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e', 'expires_at' => '2026-09-05T12:10:00+05:00', 'attempts_remaining' => -1, 'expires_in' => 600]],
+]);
+
+it('rejects malformed successful otp confirmation payloads', function (array $body) {
+    Http::fake(['*/api/identity/me/account-deletion/otp/confirm' => Http::response($body)]);
+
+    expect(fn () => app(IdentityBridgeClient::class)->confirmAccountDeletionOtp(
+        'user-token',
+        '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e',
+        '123456',
+    ))->toThrow(AccountDeletionException::class, 'Identity Bridge account deletion request failed.');
+})->with([
+    'missing token type' => [['access_token' => 'access', 'refresh_token' => 'refresh', 'expires_in' => 900]],
+    'empty access token' => [['access_token' => '', 'refresh_token' => 'refresh', 'token_type' => 'Bearer', 'expires_in' => 900]],
+    'unbounded expiry' => [['access_token' => 'access', 'refresh_token' => 'refresh', 'token_type' => 'Bearer', 'expires_in' => 86401]],
+]);
+
+it('rejects malformed successful service acknowledgements', function (string $operation, array $body) {
+    Http::fake(['*' => Http::response($body)]);
+    $client = app(IdentityBridgeClient::class);
+
+    $call = $operation === 'revoke'
+        ? fn () => $client->revokeAllSessions('identity-1')
+        : fn () => $client->eraseIdentity('identity-1', 'admin-1', '018f47d2-d7a4-7d91-b34d-90f81fbf4a1e');
+
+    expect($call)->toThrow(AccountDeletionException::class, 'Identity Bridge account deletion request failed.');
+})->with([
+    'revoke identity mismatch' => ['revoke', ['identity_id' => 'identity-2', 'revoked_sessions' => 0]],
+    'revoke negative count' => ['revoke', ['identity_id' => 'identity-1', 'revoked_sessions' => -1]],
+    'erase identity mismatch' => ['erase', ['identity_id' => 'identity-2', 'erased' => true, 'already_erased' => false, 'erased_at' => '2026-09-05T12:00:00+05:00']],
+    'erase invalid acknowledgement' => ['erase', ['identity_id' => 'identity-1', 'erased' => 1, 'already_erased' => false, 'erased_at' => 'not-a-date']],
+]);
+
+function assertSanitizedTransportFailure(AccountDeletionException $exception, array $secrets): void
+{
+    expect($exception->category)->toBe('server')
+        ->and($exception->codeName)->toBe('service_unavailable')
+        ->and($exception->status)->toBeNull()
+        ->and($exception->retryAfter)->toBeNull()
+        ->and($exception->isRetryable())->toBeTrue()
+        ->and($exception->getPrevious())->toBeNull();
+
+    $visible = (string) $exception.serialize($exception).json_encode(get_object_vars($exception), JSON_THROW_ON_ERROR);
+    foreach ($secrets as $secret) {
+        expect($visible)->not->toContain($secret);
+    }
+}

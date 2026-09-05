@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IgniteLabs\IdentityBridge\Client;
 
+use DateTimeImmutable;
 use IgniteLabs\IdentityBridge\Dto\AccountDeletionProof;
 use IgniteLabs\IdentityBridge\Dto\KycReviewItem;
 use IgniteLabs\IdentityBridge\Dto\KycSubmission;
@@ -167,10 +168,24 @@ class IdentityBridgeClient
      */
     public function requestAccountDeletionOtp(string $accessToken, array $traceHeaders = []): array
     {
-        return $this->accountDeletionJson($this->withTraceHeaders(
-            $this->userRequest($accessToken),
-            $traceHeaders,
-        )->post($this->url('/api/identity/me/account-deletion/otp')));
+        try {
+            $response = $this->withTraceHeaders(
+                $this->userRequest($accessToken),
+                $traceHeaders,
+            )->post($this->url('/api/identity/me/account-deletion/otp'));
+        } catch (\Throwable) {
+            throw AccountDeletionException::transportFailure();
+        }
+
+        $body = $this->accountDeletionJson($response);
+        if (! $this->isUuid($body['challenge_id'] ?? null)
+            || ! $this->isDateTime($body['expires_at'] ?? null)
+            || ! $this->isBoundedInt($body['attempts_remaining'] ?? null, 0, 100)
+            || ! $this->isBoundedInt($body['expires_in'] ?? null, 1, 86400)) {
+            throw AccountDeletionException::invalidResponse($response->status());
+        }
+
+        return $body;
     }
 
     /** @param array<string, string> $traceHeaders */
@@ -180,13 +195,27 @@ class IdentityBridgeClient
         string $code,
         array $traceHeaders = [],
     ): AccountDeletionProof {
-        return AccountDeletionProof::fromArray($this->accountDeletionJson($this->withTraceHeaders(
-            $this->userRequest($accessToken),
-            $traceHeaders,
-        )->post($this->url('/api/identity/me/account-deletion/otp/confirm'), [
-            'challenge_id' => $challengeId,
-            'code' => $code,
-        ])));
+        try {
+            $response = $this->withTraceHeaders(
+                $this->userRequest($accessToken),
+                $traceHeaders,
+            )->post($this->url('/api/identity/me/account-deletion/otp/confirm'), [
+                'challenge_id' => $challengeId,
+                'code' => $code,
+            ]);
+        } catch (\Throwable) {
+            throw AccountDeletionException::transportFailure();
+        }
+
+        $body = $this->accountDeletionJson($response);
+        if (! $this->isNonEmptyString($body['access_token'] ?? null)
+            || ! $this->isNonEmptyString($body['refresh_token'] ?? null)
+            || ! $this->isNonEmptyString($body['token_type'] ?? null)
+            || ! $this->isBoundedInt($body['expires_in'] ?? null, 1, 86400)) {
+            throw AccountDeletionException::invalidResponse($response->status());
+        }
+
+        return AccountDeletionProof::fromArray($body);
     }
 
     /**
@@ -195,10 +224,24 @@ class IdentityBridgeClient
      */
     public function revokeAllSessions(string $identityId, array $traceHeaders = []): array
     {
-        return $this->accountDeletionJson($this->withTraceHeaders(
-            $this->serviceRequest(),
-            $traceHeaders,
-        )->post($this->url("/api/service/users/{$identityId}/sessions/revoke-all")));
+        try {
+            $response = $this->withTraceHeaders(
+                $this->serviceRequest(),
+                $traceHeaders,
+            )->post($this->url("/api/service/users/{$identityId}/sessions/revoke-all"));
+        } catch (\Throwable) {
+            throw AccountDeletionException::transportFailure();
+        }
+
+        $body = $this->accountDeletionJson($response);
+        if (! isset($body['identity_id'])
+            || ! is_string($body['identity_id'])
+            || ! hash_equals($identityId, $body['identity_id'])
+            || ! $this->isBoundedInt($body['revoked_sessions'] ?? null, 0, PHP_INT_MAX)) {
+            throw AccountDeletionException::invalidResponse($response->status());
+        }
+
+        return $body;
     }
 
     /**
@@ -214,10 +257,26 @@ class IdentityBridgeClient
         $request = $this->withTraceHeaders($this->serviceRequest(), $traceHeaders)
             ->withHeader('Idempotency-Key', $idempotencyKey);
 
-        return $this->accountDeletionJson($request->post(
-            $this->url("/api/service/users/{$identityId}/erase"),
-            ['admin_id' => $adminId],
-        ));
+        try {
+            $response = $request->post(
+                $this->url("/api/service/users/{$identityId}/erase"),
+                ['admin_id' => $adminId],
+            );
+        } catch (\Throwable) {
+            throw AccountDeletionException::transportFailure();
+        }
+
+        $body = $this->accountDeletionJson($response);
+        if (! isset($body['identity_id'])
+            || ! is_string($body['identity_id'])
+            || ! hash_equals($identityId, $body['identity_id'])
+            || ($body['erased'] ?? null) !== true
+            || ! is_bool($body['already_erased'] ?? null)
+            || ! $this->isDateTime($body['erased_at'] ?? null)) {
+            throw AccountDeletionException::invalidResponse($response->status());
+        }
+
+        return $body;
     }
 
     public function updateProfile(string $accessToken, string $grantToken, array $attributes): Profile
@@ -473,6 +532,37 @@ class IdentityBridgeClient
         }
 
         return $traceHeaders === [] ? $request : $request->withHeaders($traceHeaders);
+    }
+
+    private function isNonEmptyString(mixed $value): bool
+    {
+        return is_string($value) && trim($value) !== '';
+    }
+
+    private function isBoundedInt(mixed $value, int $minimum, int $maximum): bool
+    {
+        return is_int($value) && $value >= $minimum && $value <= $maximum;
+    }
+
+    private function isUuid(mixed $value): bool
+    {
+        return is_string($value)
+            && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iD', $value) === 1;
+    }
+
+    private function isDateTime(mixed $value): bool
+    {
+        if (! $this->isNonEmptyString($value)) {
+            return false;
+        }
+
+        try {
+            new DateTimeImmutable($value);
+
+            return true;
+        } catch (\Exception) {
+            return false;
+        }
     }
 
     private function url(string $path): string

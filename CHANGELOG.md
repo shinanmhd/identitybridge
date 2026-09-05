@@ -10,3 +10,4 @@ All notable changes to `identitybridge` will be documented in this file.
 - Scoped service methods to revoke all identity sessions and permanently erase an identity.
 - Explicit W3C trace-context propagation and `Idempotency-Key` forwarding for erasure commands.
 - Safe typed deletion failures with stable categories, status, and bounded retry timing.
+- Sanitized transport failures and strict validation of successful deletion responses before consumer trust.
