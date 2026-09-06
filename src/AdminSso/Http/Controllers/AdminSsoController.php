@@ -87,6 +87,11 @@ class AdminSsoController extends Controller
                 'ib_staff_email' => $claims->email,
             ]);
         } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[IdentityBridge] SSO callback failed', [
+                'error'     => $e->getMessage(),
+                'exception' => get_class($e),
+                'trace'     => $e->getTraceAsString(),
+            ]);
             return redirect(config('identity-bridge.admin_sso.error_redirect', '/admin/login'))
                 ->with('ib_sso_error', $e->getMessage());
         }
