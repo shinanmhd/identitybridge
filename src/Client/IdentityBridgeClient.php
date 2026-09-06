@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace IgniteLabs\IdentityBridge\Client;
 
+use DateTimeImmutable;
+use IgniteLabs\IdentityBridge\Dto\AccountDeletionProof;
 use IgniteLabs\IdentityBridge\Dto\KycReviewItem;
 use IgniteLabs\IdentityBridge\Dto\KycSubmission;
 use IgniteLabs\IdentityBridge\Dto\Profile;
+use IgniteLabs\IdentityBridge\Exceptions\AccountDeletionException;
 use IgniteLabs\IdentityBridge\Exceptions\IdentityBridgeException;
 use IgniteLabs\IdentityBridge\Exceptions\KycConflictException;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class IdentityBridgeClient
 {
@@ -155,6 +159,141 @@ class IdentityBridgeClient
             'challenge_id' => $challengeId,
             'code' => $code,
         ]));
+    }
+
+    /**
+     * Request an account-deletion challenge for the bearer-token subject.
+     *
+     * @param  array<string, string>  $traceHeaders
+     * @return array{challenge_id: string, expires_at: string, attempts_remaining: int, expires_in: int}
+     */
+    public function requestAccountDeletionOtp(string $accessToken, array $traceHeaders = []): array
+    {
+        try {
+            $response = $this->withTraceHeaders(
+                $this->userRequest($accessToken),
+                $traceHeaders,
+            )->post($this->url('/api/identity/me/account-deletion/otp'));
+        } catch (\Throwable) {
+            throw AccountDeletionException::transportFailure();
+        }
+
+        $body = $this->accountDeletionJson($response);
+        if (! $this->isUuid($body['challenge_id'] ?? null)
+            || ! $this->isDateTime($body['expires_at'] ?? null)
+            || ! $this->isBoundedInt($body['attempts_remaining'] ?? null, 0, 100)
+            || ! $this->isBoundedInt($body['expires_in'] ?? null, 1, 86400)) {
+            throw AccountDeletionException::invalidResponse($response->status());
+        }
+
+        return $body;
+    }
+
+    /** @param array<string, string> $traceHeaders */
+    public function confirmAccountDeletionOtp(
+        string $accessToken,
+        string $challengeId,
+        string $code,
+        array $traceHeaders = [],
+    ): AccountDeletionProof {
+        return $this->confirmAccountDeletionOtpIdempotently(
+            $accessToken,
+            $challengeId,
+            $code,
+            (string) Str::uuid(),
+            $traceHeaders,
+        );
+    }
+
+    /** @param array<string, string> $traceHeaders */
+    public function confirmAccountDeletionOtpIdempotently(
+        string $accessToken,
+        string $challengeId,
+        string $code,
+        string $idempotencyKey,
+        array $traceHeaders = [],
+    ): AccountDeletionProof {
+        try {
+            $response = $this->withTraceHeaders(
+                $this->userRequest($accessToken)->withHeader('Idempotency-Key', $idempotencyKey),
+                $traceHeaders,
+            )->post($this->url('/api/identity/me/account-deletion/otp/confirm'), [
+                'challenge_id' => $challengeId,
+                'code' => $code,
+            ]);
+        } catch (\Throwable) {
+            throw AccountDeletionException::transportFailure();
+        }
+
+        $body = $this->accountDeletionJson($response);
+        if (! $this->isNonEmptyString($body['access_token'] ?? null)
+            || ! $this->isNonEmptyString($body['refresh_token'] ?? null)
+            || ! $this->isBoundedInt($body['expires_in'] ?? null, 1, 86400)) {
+            throw AccountDeletionException::invalidResponse($response->status());
+        }
+
+        return AccountDeletionProof::fromArray($body);
+    }
+
+    /**
+     * @param  array<string, string>  $traceHeaders
+     * @return array{identity_id: string, revoked_sessions: int}
+     */
+    public function revokeAllSessions(string $identityId, array $traceHeaders = []): array
+    {
+        try {
+            $response = $this->withTraceHeaders(
+                $this->serviceRequest(),
+                $traceHeaders,
+            )->post($this->url("/api/service/users/{$identityId}/sessions/revoke-all"));
+        } catch (\Throwable) {
+            throw AccountDeletionException::transportFailure();
+        }
+
+        $body = $this->accountDeletionJson($response);
+        if (! isset($body['identity_id'])
+            || ! is_string($body['identity_id'])
+            || ! hash_equals($identityId, $body['identity_id'])
+            || ! $this->isBoundedInt($body['revoked_sessions'] ?? null, 0, PHP_INT_MAX)) {
+            throw AccountDeletionException::invalidResponse($response->status());
+        }
+
+        return $body;
+    }
+
+    /**
+     * @param  array<string, string>  $traceHeaders
+     * @return array{identity_id: string, erased: bool, already_erased: bool, erased_at: string}
+     */
+    public function eraseIdentity(
+        string $identityId,
+        string $adminId,
+        string $idempotencyKey,
+        array $traceHeaders = [],
+    ): array {
+        $request = $this->withTraceHeaders($this->serviceRequest(), $traceHeaders)
+            ->withHeader('Idempotency-Key', $idempotencyKey);
+
+        try {
+            $response = $request->post(
+                $this->url("/api/service/users/{$identityId}/erase"),
+                ['admin_id' => $adminId],
+            );
+        } catch (\Throwable) {
+            throw AccountDeletionException::transportFailure();
+        }
+
+        $body = $this->accountDeletionJson($response);
+        if (! isset($body['identity_id'])
+            || ! is_string($body['identity_id'])
+            || ! hash_equals($identityId, $body['identity_id'])
+            || ($body['erased'] ?? null) !== true
+            || ! is_bool($body['already_erased'] ?? null)
+            || ! $this->isDateTime($body['erased_at'] ?? null)) {
+            throw AccountDeletionException::invalidResponse($response->status());
+        }
+
+        return $body;
     }
 
     public function updateProfile(string $accessToken, string $grantToken, array $attributes): Profile
@@ -340,6 +479,108 @@ class IdentityBridgeClient
         }
 
         return $response->json() ?? [];
+    }
+
+    private function accountDeletionJson(Response $response): array
+    {
+        if ($response->failed()) {
+            $status = $response->status();
+            $upstreamCode = $response->json('error');
+            $allowedCodes = [
+                'too_many_requests' => 429,
+                'too_many_attempts' => 429,
+                'otp_unavailable' => 503,
+                'internal_error' => 500,
+                'invalid_challenge' => 422,
+                'not_found' => 404,
+                'idempotency_conflict' => 409,
+                'idempotency_expired' => 409,
+                'deletion_actor_forbidden' => 403,
+            ];
+            $code = is_string($upstreamCode) && ($allowedCodes[$upstreamCode] ?? null) === $status
+                ? $upstreamCode
+                : match (true) {
+                    $status === 401 => 'authentication_failed',
+                    $status === 403 => 'forbidden',
+                    $status === 404 => 'not_found',
+                    $status === 409 => 'conflict',
+                    $status === 422 => 'validation_failed',
+                    $status === 429 => 'rate_limited',
+                    $status >= 500 => 'service_unavailable',
+                    default => 'request_failed',
+                };
+            $category = match (true) {
+                $status === 401 => 'authentication',
+                $status === 403 => 'authorization',
+                $status === 404 => 'not_found',
+                $status === 409 => 'conflict',
+                $status === 422 => 'validation',
+                $status === 429 => 'rate_limited',
+                $status >= 500 => 'server',
+                default => 'request',
+            };
+            $retryAfter = $response->json('retry_after');
+
+            throw new AccountDeletionException(
+                $category,
+                $code,
+                $status,
+                is_int($retryAfter) && $retryAfter >= 0 && $retryAfter <= 86400 ? $retryAfter : null,
+            );
+        }
+
+        return $response->json() ?? [];
+    }
+
+    /** @param array<string, string> $headers */
+    private function withTraceHeaders(PendingRequest $request, array $headers): PendingRequest
+    {
+        $traceHeaders = [];
+
+        foreach ($headers as $name => $value) {
+            $canonicalName = match (strtolower($name)) {
+                'traceparent' => 'traceparent',
+                'tracestate' => 'tracestate',
+                default => null,
+            };
+
+            if ($canonicalName !== null && $value !== '') {
+                $traceHeaders[$canonicalName] = $value;
+            }
+        }
+
+        return $traceHeaders === [] ? $request : $request->withHeaders($traceHeaders);
+    }
+
+    private function isNonEmptyString(mixed $value): bool
+    {
+        return is_string($value) && trim($value) !== '';
+    }
+
+    private function isBoundedInt(mixed $value, int $minimum, int $maximum): bool
+    {
+        return is_int($value) && $value >= $minimum && $value <= $maximum;
+    }
+
+    private function isUuid(mixed $value): bool
+    {
+        return is_string($value)
+            && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iD', $value) === 1;
+    }
+
+    private function isDateTime(mixed $value): bool
+    {
+        if (! $this->isNonEmptyString($value)) {
+            return false;
+        }
+
+        try {
+            new DateTimeImmutable($value);
+
+            return true;
+        } catch (\Exception) {
+            return false;
+        }
     }
 
     private function url(string $path): string
